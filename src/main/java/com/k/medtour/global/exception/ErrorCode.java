@@ -38,6 +38,12 @@ public enum ErrorCode {
 
     // Patient
     PATIENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATIENT_001", "환자를 찾을 수 없습니다."),
+    PASSPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATIENT_002", "여권 정보를 찾을 수 없습니다."),
+    PASSPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "PATIENT_003", "여권 정보가 이미 존재합니다."),
+    QUESTIONNAIRE_NOT_FOUND(HttpStatus.NOT_FOUND, "PATIENT_004", "문진표를 찾을 수 없습니다."),
+    QUESTIONNAIRE_ALREADY_EXISTS(HttpStatus.CONFLICT, "PATIENT_005", "문진표가 이미 존재합니다."),
+    EMERGENCY_CONTACT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATIENT_006", "긴급 연락처를 찾을 수 없습니다."),
+    PATIENT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PATIENT_007", "본인의 데이터만 접근할 수 있습니다."),
 
     // Staff
     STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "STAFF_001", "실무자를 찾을 수 없습니다."),
