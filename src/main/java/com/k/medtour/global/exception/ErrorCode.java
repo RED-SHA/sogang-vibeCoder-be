@@ -72,6 +72,9 @@ public enum ErrorCode {
 
     // Chat
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_001", "채팅방을 찾을 수 없습니다."),
+    CHAT_ROOM_ALREADY_EXISTS(HttpStatus.CONFLICT, "CHAT_002", "동일 참여자 간 이미 채팅방이 존재합니다."),
+    CHAT_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "CHAT_003", "해당 채팅방 참여자가 아닙니다."),
+    CHAT_FILE_ERROR(HttpStatus.BAD_REQUEST, "CHAT_004", "채팅 파일 처리 중 오류가 발생했습니다."),
 
     // File
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FIL_000", "파일 업로드에 실패했습니다."),
