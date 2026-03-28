@@ -386,30 +386,270 @@ refactor(domain): 리팩토링
 
 ---
 
-## 5. 프로젝트 실행
+## 5. 서버 구동 방법
+
+### 5.1 사전 요구사항
+
+- Java 21+
+- Docker (PostgreSQL + Redis용)
+- Gradle (Wrapper 포함, 별도 설치 불필요)
+
+### 5.2 인프라 기동
 
 ```bash
-# 인프라 기동
-docker-compose up -d
+# PostgreSQL 15 + Redis 7 컨테이너 시작
+docker compose up -d
 
-# 빌드 및 실행
+# 상태 확인
+docker ps
+# kmedtour-postgres (5432)
+# kmedtour-redis (6379)
+```
+
+### 5.3 애플리케이션 실행
+
+```bash
+# 방법 1: Docker DB 사용 (local 프로필)
 ./gradlew bootRun --args='--spring.profiles.active=local'
 
-# 테스트
+# 방법 2: Docker 없이 H2 인메모리 (test 프로필)
+./gradlew bootRun --args='--spring.profiles.active=test'
+```
+
+부팅 완료 시 아래 로그가 출력됩니다:
+```
+Started KMedTourApplication in 3.4 seconds
+```
+
+### 5.4 Swagger UI 접속
+
+브라우저에서 아래 URL을 열어 전체 API를 확인할 수 있습니다:
+
+| URL | 설명 |
+|-----|------|
+| http://localhost:8080/swagger-ui/index.html | Swagger UI (인터랙티브 API 문서) |
+| http://localhost:8080/v3/api-docs | OpenAPI 3.0 JSON 스펙 |
+
+Swagger UI에서 12개 도메인이 `@Tag`로 그룹핑되어 표시됩니다:
+
+| Tag | 엔드포인트 수 |
+|-----|------------|
+| 인증 | 9 |
+| 회원 | 5 |
+| 환자 | 11 |
+| 파일 | 3 |
+| 견적서 | 8 |
+| 여정 | 13 |
+| 실무자 여정 | 4 |
+| 채팅 | 8 |
+| 알림 | 6 |
+| 대시보드 | 2 |
+| 사후관리 | 6 |
+| 프로필 | 1 |
+
+### 5.5 인증된 API 호출 예시
+
+Swagger UI에서 `Authorize` 버튼을 클릭하고 JWT 토큰을 입력합니다.
+OAuth 로그인 API(`POST /api/v1/auth/oauth/{provider}`)로 토큰을 발급받을 수 있습니다.
+
+### 5.6 테스트 실행
+
+```bash
+# 전체 테스트 (204개)
 ./gradlew test
 
-# API 문서
-open http://localhost:8080/swagger-ui.html
+# 특정 도메인 테스트
+./gradlew test --tests "com.k.medtour.domain.journey.*"
+
+# 테스트 리포트
+open build/reports/tests/test/index.html
+```
+
+### 5.7 프로필 설명
+
+| 프로필 | DB | Redis | Flyway | 용도 |
+|--------|-----|-------|--------|------|
+| `local` | PostgreSQL (Docker) | Redis (Docker) | 활성 | 로컬 개발 |
+| `test` | H2 인메모리 | 비활성 | 비활성 | Docker 없이 빠른 테스트 |
+| `dev` | PostgreSQL (외부) | Redis (외부) | 활성 | 개발 서버 |
+| `prod` | PostgreSQL (외부) | Redis (외부) | 활성 | 운영 서버 |
+
+### 5.8 서버 종료
+
+```bash
+# 앱 종료 (Ctrl+C 또는)
+kill $(lsof -ti:8080)
+
+# 인프라 종료
+docker compose down
 ```
 
 ---
 
-## 6. 참고 링크
+## 6. 구현 과정 (Sprint 기반 개발)
+
+Anthropic의 [Harness Engineering](https://www.anthropic.com/engineering/harness-design-long-running-apps) 패턴을 적용하여 **Generator-Evaluator 아키텍처**로 8개 스프린트를 순차 진행했습니다.
+
+### 6.1 스프린트 실행 결과
+
+| Sprint | 제목 | Entity | 엔드포인트 | 테스트 | Flyway | 브랜치 |
+|--------|------|--------|----------|-------|--------|--------|
+| 0 | Foundation | - | 0 | - | V1 | `feature/sprint-0-init` |
+| 1 | Auth + Member + RBAC | 8 | 14 | 54 | V2 | `feature/sprint-1-auth` |
+| 2 | Patient Onboarding | 3 | 11 | 27 | V3 | `feature/sprint-2-patient` |
+| 3 | File Upload | 1 | 3 | 17 | V4 | `feature/sprint-3-file` |
+| 4 | Proposal/Quotation | 3 | 8 | 21 | V5 | `feature/sprint-4-proposal` |
+| 5 | Journey Core | 5 | 17 | 32 | V6 | `feature/sprint-5-journey` |
+| 6 | Chat + Translation | 3 | 8 | 16 | V7 | `feature/sprint-6-chat` |
+| 7 | Notification + Dashboard + Aftercare | 5 | 15 | 30 | V8 | `feature/sprint-7-notification` |
+| **합계** | | **28** | **76** | **197** | **V1~V8** | |
+
+### 6.2 스프린트별 구현 내용
+
+**Sprint 0: Foundation**
+- Spring Boot 3.4.4 + Java 21 프로젝트 스캐폴딩
+- BaseEntity, ApiResponse<T>, PageResponse<T>, GlobalExceptionHandler
+- JWT 인증 (JwtTokenProvider, JwtAuthenticationFilter, SecurityConfig)
+- WebSocket(STOMP), Redis, JPA, Swagger 설정
+- Docker Compose (PostgreSQL 15 + Redis 7)
+- Flyway V1: role, permission, role_permission, member + RBAC 초기 데이터
+- i18n 메시지 번들 (en/zh/ja/ar)
+
+**Sprint 1: Auth + Member + RBAC**
+- OAuth2 소셜 로그인 (Google, Apple), 매직 링크 (2FA 생년월일 검증, 10분 만료, 분당 3회 제한)
+- JWT 토큰 갱신 (Refresh Token HttpOnly Cookie), 로그아웃
+- 약관 동의 (필수/선택 항목, 버전 관리)
+- RBAC 역할 관리 (목록 조회, 역할 변경, 자기 자신 변경 불가)
+- 실무자/에이전시 프로필 CRUD
+
+**Sprint 2: Patient Onboarding**
+- 여권 정보 업로드 (Manual/OCR), 응답 시 여권번호 마스킹 (`M1234****`)
+- 의료/알레르기 문진표 (JSONB: 알레르기, 복용약, 수술이력, 만성질환)
+- 긴급 연락처 CRUD
+- 본인 데이터 접근 검증 (PATIENT 본인 + ADMIN만)
+
+**Sprint 3: File Upload**
+- StorageService 인터페이스 + LocalStorageService (MVP 로컬 구현)
+- 파일 타입 검증 (jpeg/png/gif/pdf/doc), 크기 제한 (20MB)
+- Presigned URL 생성 (1시간 유효)
+- 본인 파일만 삭제 가능 (ADMIN은 전체)
+
+**Sprint 4: Proposal/Quotation**
+- 견적서 CRUD + 상태 전이 (DRAFT → SENT → ACCEPTED/REJECTED)
+- BigDecimal 금액 계산 (subtotal, discount, totalAmount)
+- 환자 견적 요청, 견적서 비교/수락/거절
+
+**Sprint 5: Journey Core (핵심)**
+- 여정 템플릿 빌더 (CMS) — CRUD, 카테고리 필터
+- 템플릿 → 실제 여정 변환 (startDate + dayOffset + timeOffset)
+- 일정 항목 CRUD + 상태 전이 (SCHEDULED → EN_ROUTE → ARRIVED → IN_PROGRESS → COMPLETED)
+- 실무자 배정, 당일 업무 리스트
+- 환자 라이브 타임라인, 환자 특이사항 조회
+- Google/Kakao/Naver/Apple Maps 딥링크
+
+**Sprint 6: Chat + Translation**
+- 1:1 채팅방 (PATIENT_AGENCY, STAFF_AGENCY, PATIENT_STAFF)
+- 텍스트/파일 메시지 전송, 커서 기반 페이징
+- 읽음 처리, 관리자 멀티챗 관제
+- SOS 긴급 호출
+- TranslationService 인터페이스 + NoOpTranslationService (MVP)
+
+**Sprint 7: Notification + Dashboard + Aftercare**
+- 알림 CRUD + 읽음 처리 + 관리자 긴급 알림
+- 대시보드 Overview (환자수, 여정수, 오늘 일정, 미읽은 채팅 통계)
+- 사후 관리 가이드, 인보이스 (자동 번호 생성 `INV-{yyyyMMdd}-{seq}`, 10% 세금 자동 계산)
+- 업무 종료 리포트 (STAFF), 병원 포트폴리오
+
+### 6.3 총 커밋 수
+
+| 카테고리 | 커밋 수 |
+|---------|--------|
+| Feature 브랜치 (Sprint 0~7) | 56 |
+| Hotfix (테스트/런타임) | 5 |
+| Merge 커밋 | 9 |
+| **합계** | **70** |
+
+---
+
+## 7. Ralph Loop 디버깅 결과 보고서
+
+[Ralph Loop](https://ghuntley.com/ralph/)는 동일한 프롬프트를 반복 주입하여 AI가 이전 작업을 파일/git에서 확인하고 점진적으로 개선하는 반복 개발 기법입니다.
+
+### 7.1 Ralph Loop 실행 #1: 스프린트 구현
+
+| 항목 | 값 |
+|------|-----|
+| 프롬프트 | `이제 스프린트 단위 구현 시작해` |
+| 반복 횟수 | 4회 |
+| 결과 | Sprint 0~7 전체 구현 완료 (43/43 요구사항, 76 엔드포인트) |
+
+**각 이터레이션 작업 내용:**
+- Iteration 1: Sprint 0 (Foundation) + Sprint 1 (Auth) + Sprint 2 (Patient)
+- Iteration 2: Sprint 3 (File) + Sprint 4 (Proposal) + Sprint 5 (Journey) + Sprint 6 (Chat) + Sprint 7 (Notification)
+- Iteration 3~4: 메모리 업데이트 + 완료 확인 → Ralph Loop 취소
+
+### 7.2 Ralph Loop 실행 #2: 디버깅
+
+| 항목 | 값 |
+|------|-----|
+| 프롬프트 | `실행해보고 안되는 부분 식별해서 디버깅해. 수정이나 다른 모든 행위들도 깃플로우 전략` |
+| 반복 횟수 | 3회 |
+| 결과 | 204/204 테스트 통과 + 앱 정상 부팅 |
+
+**발견된 버그 및 수정 내역:**
+
+#### Hotfix #1: `hotfix/build-test-fix` — 33개 테스트 실패
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| 11개 Controller 테스트 전체 실패 (33건) | `@WithMockUser`가 커스텀 `UserPrincipal`을 생성하지 못함. `@AuthenticationPrincipal`이 null 반환 → `NullPointerException` | `SecurityTestUtil` 유틸 생성. `setAuthentication(memberId, role)`로 SecurityContext에 UserPrincipal 직접 설정 |
+| `StaffAssignmentServiceTest` 상태 전이 실패 (1건) | `ScheduleItemStatus.canTransitionTo()`가 ordinal 비교로 단계 건너뛰기 허용 (SCHEDULED→COMPLETED 가능) | 순차 전이만 허용 (`next.ordinal() == this.ordinal() + 1`) |
+
+#### Hotfix #2: `hotfix/runtime-fix` — 앱 부팅 실패
+
+| 문제 | 원인 | 해결 |
+|------|------|------|
+| `JwtProperties` bean not found | `@ConfigurationProperties` record에 `@EnableConfigurationProperties` 미등록 | `KMedTourApplication`에 `@EnableConfigurationProperties(JwtProperties.class)` 추가 |
+| `StorageService` bean not found (test profile) | `LocalStorageService`가 `@Profile("local")`만 지원 | `@Profile({"local", "test"})` 확장 |
+| `RedisConnectionFactory` bean not found (test profile) | `RedisConfig`가 무조건 Redis 연결 시도 | `@ConditionalOnProperty(name = "spring.data.redis.host")` 조건부 로딩 |
+| Swagger UI 403 Forbidden | SecurityConfig에서 `/swagger-ui.html` 경로 미허용 | `requestMatchers`에 `/swagger-ui.html` 추가 |
+
+#### 최종 상태
+
+| 항목 | 수정 전 | 수정 후 |
+|------|--------|--------|
+| 컴파일 | PASS | PASS |
+| 테스트 | 171/204 (33 failed) | **204/204 PASS** |
+| 앱 부팅 | 3가지 에러로 실패 | **3.4초 내 정상 기동** |
+| Swagger UI | 403 Forbidden | **200 OK (76 endpoints)** |
+| Flyway | - | **V1~V8 마이그레이션 적용** |
+
+---
+
+## 8. 프로젝트 최종 현황
+
+| 항목 | 수치 |
+|------|------|
+| 요구사항 | 43/43 (100%) |
+| REST 엔드포인트 | 76개 |
+| Entity | 28개 |
+| Flyway 마이그레이션 | V1 ~ V8 |
+| 단위/슬라이스 테스트 | 204개 (100% PASS) |
+| 도메인 | 12개 (Auth, Member, Patient, Staff, File, Proposal, Journey, Chat, Notification, Dashboard, Aftercare, Profile) |
+| Git 커밋 | 70개 |
+| 브랜치 | Gitflow (8 feature + 2 hotfix → develop) |
+
+---
+
+## 9. 참고 링크
 
 | 항목 | URL |
 |------|-----|
+| GitHub | https://github.com/yhyh4420/sogang-vibeCoder-be |
 | 노션 기획서 | https://storedh.notion.site/K-326bdb99cba58013a75dd398ef69e605 |
 | API 명세서 | [`docs/api-spec.md`](docs/api-spec.md) |
 | 관리자 프로토타입 | [Stitch Preview (Admin)](https://stitch.withgoogle.com/preview/14414138817315747256?node-id=76a23d34b33847728ef8c38209984503) |
 | 환자 프로토타입 | [Stitch Preview (Patient)](https://stitch.withgoogle.com/preview/14414138817315747256?node-id=1b4f6e6a351e43ff886cba2671dd8e45) |
 | 피그마 | [Figma Design](https://www.figma.com/design/OONDRiBb95Io9qlJX0QKKM) |
+| 하네스 엔지니어링 | [Anthropic - Harness Design](https://www.anthropic.com/engineering/harness-design-long-running-apps) |
+| Ralph Loop | [ghuntley.com/ralph](https://ghuntley.com/ralph/) |
