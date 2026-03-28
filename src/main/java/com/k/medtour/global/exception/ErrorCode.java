@@ -16,9 +16,22 @@ public enum ErrorCode {
 
     // Auth
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_001", "인증이 필요합니다."),
+    INVALID_OAUTH_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_001", "유효하지 않은 OAuth 토큰입니다."),
+    UNSUPPORTED_OAUTH_PROVIDER(HttpStatus.BAD_REQUEST, "AUTH_002", "지원하지 않는 OAuth 제공자입니다."),
+    OAUTH_EMAIL_CONFLICT(HttpStatus.CONFLICT, "AUTH_003", "이미 다른 제공자로 가입된 이메일입니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_002", "토큰이 만료되었습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_003", "유효하지 않은 토큰입니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH_004", "접근 권한이 없습니다."),
+    INVALID_MAGIC_LINK_TARGET(HttpStatus.BAD_REQUEST, "AUTH_010", "유효하지 않은 이메일/전화번호 형식입니다."),
+    MAGIC_LINK_RATE_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "AUTH_011", "매직 링크 발급 횟수를 초과했습니다. (분당 3회)"),
+    MAGIC_LINK_EXPIRED(HttpStatus.BAD_REQUEST, "AUTH_020", "만료된 매직 링크입니다."),
+    MAGIC_LINK_BIRTH_DATE_MISMATCH(HttpStatus.UNAUTHORIZED, "AUTH_021", "2차 인증(생년월일)이 일치하지 않습니다."),
+    MAGIC_LINK_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH_022", "존재하지 않는 매직 링크 토큰입니다."),
+    REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH_030", "만료된 Refresh Token입니다."),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_031", "유효하지 않은 Refresh Token입니다."),
+    CONSENT_REQUIRED_FIELDS(HttpStatus.BAD_REQUEST, "AUTH_040", "필수 동의 항목이 체크되지 않았습니다."),
+    ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "AUTH_051", "존재하지 않는 역할 ID입니다."),
+    CANNOT_CHANGE_OWN_ROLE(HttpStatus.FORBIDDEN, "AUTH_052", "자기 자신의 역할은 변경할 수 없습니다."),
 
     // Member
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "MEMBER_001", "회원을 찾을 수 없습니다."),
@@ -28,6 +41,10 @@ public enum ErrorCode {
 
     // Staff
     STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "STAFF_001", "실무자를 찾을 수 없습니다."),
+    STAFF_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "STAFF_002", "실무자 프로필을 찾을 수 없습니다."),
+
+    // Agency
+    AGENCY_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "AGENCY_001", "에이전시 프로필을 찾을 수 없습니다."),
 
     // Journey
     JOURNEY_NOT_FOUND(HttpStatus.NOT_FOUND, "JOURNEY_001", "여정을 찾을 수 없습니다."),
