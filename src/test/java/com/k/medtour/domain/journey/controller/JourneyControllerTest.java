@@ -25,6 +25,9 @@ import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.common.PageResponse;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,7 +35,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -68,12 +70,21 @@ class JourneyControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @BeforeEach
+    void setUp() {
+        SecurityTestUtil.setAuthentication(1L, "ADMIN");
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     @Nested
     @DisplayName("템플릿 API")
     class TemplateApiTest {
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("GET /templates - 템플릿 목록 조회")
         void getTemplates() throws Exception {
             TemplateListResponse item = new TemplateListResponse(
@@ -91,7 +102,6 @@ class JourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("POST /templates - 템플릿 생성")
         void createTemplate() throws Exception {
             TemplateCreateRequest request = new TemplateCreateRequest(
@@ -116,7 +126,6 @@ class JourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("POST /templates - 중복 이름 409")
         void createTemplate_Duplicate() throws Exception {
             TemplateCreateRequest request = new TemplateCreateRequest(
@@ -132,7 +141,6 @@ class JourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("DELETE /templates/{id} - 삭제 성공")
         void deleteTemplate() throws Exception {
             doNothing().when(journeyService).deleteTemplate(1L);
@@ -147,7 +155,6 @@ class JourneyControllerTest {
     class JourneyApiTest {
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("POST /journeys - 여정 생성")
         void createJourney() throws Exception {
             JourneyCreateRequest request = new JourneyCreateRequest(
@@ -169,7 +176,6 @@ class JourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("GET /journeys - 여정 목록 조회")
         void getJourneys() throws Exception {
             PageResponse<JourneyListResponse> response = new PageResponse<>(
@@ -183,7 +189,6 @@ class JourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("GET /journeys/{id} - 여정 상세 조회")
         void getJourneyDetail() throws Exception {
             JourneyDetailResponse responseDto = new JourneyDetailResponse(
@@ -205,7 +210,6 @@ class JourneyControllerTest {
     class ScheduleItemApiTest {
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("POST /journeys/{id}/schedule-items - 일정 추가")
         void addScheduleItem() throws Exception {
             ScheduleItemCreateRequest request = new ScheduleItemCreateRequest(
@@ -229,7 +233,6 @@ class JourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("PUT /journeys/{id}/schedule-items/{itemId} - 일정 수정")
         void updateScheduleItem() throws Exception {
             ScheduleItemUpdateRequest request = new ScheduleItemUpdateRequest(
@@ -250,7 +253,6 @@ class JourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "ADMIN")
         @DisplayName("DELETE /journeys/{id}/schedule-items/{itemId} - 일정 삭제")
         void deleteScheduleItem() throws Exception {
             doNothing().when(journeyService).deleteScheduleItem(100L, 505L);

@@ -16,6 +16,9 @@ import com.k.medtour.domain.patient.service.PatientService;
 import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -59,6 +61,16 @@ class PatientControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @BeforeEach
+    void setUp() {
+        SecurityTestUtil.setAuthentication(1L, "PATIENT");
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     // ========== Passport ==========
 
     @Nested
@@ -67,7 +79,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 여권 정보를 등록하면 201을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void createPassport_success() throws Exception {
             // Given
             PassportRequest request = new PassportRequest(
@@ -97,7 +108,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("실패 - 이미 여권이 존재하면 409를 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void createPassport_fail_conflict() throws Exception {
             // Given
             PassportRequest request = new PassportRequest(
@@ -124,7 +134,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 여권 정보를 정상 조회한다")
-        @WithMockUser(roles = "PATIENT")
         void getPassport_success() throws Exception {
             // Given
             PassportResponse response = new PassportResponse(
@@ -146,7 +155,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("실패 - 여권 정보가 없으면 404를 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void getPassport_fail_notFound() throws Exception {
             // Given
             given(patientService.getPassport(1L))
@@ -165,7 +173,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 여권 정보를 수정하면 200을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void updatePassport_success() throws Exception {
             // Given
             PassportRequest request = new PassportRequest(
@@ -201,7 +208,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 문진표를 등록하면 201을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void createQuestionnaire_success() throws Exception {
             // Given
             QuestionnaireRequest request = new QuestionnaireRequest(
@@ -232,7 +238,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("실패 - 이미 문진표가 존재하면 409를 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void createQuestionnaire_fail_conflict() throws Exception {
             // Given
             QuestionnaireRequest request = new QuestionnaireRequest(
@@ -258,7 +263,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 문진표를 정상 조회한다")
-        @WithMockUser(roles = "PATIENT")
         void getQuestionnaire_success() throws Exception {
             // Given
             QuestionnaireResponse response = new QuestionnaireResponse(
@@ -286,7 +290,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 긴급 연락처를 등록하면 201을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void createEmergencyContact_success() throws Exception {
             // Given
             EmergencyContactRequest request = new EmergencyContactRequest(
@@ -317,7 +320,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 긴급 연락처 목록을 조회한다")
-        @WithMockUser(roles = "PATIENT")
         void getEmergencyContacts_success() throws Exception {
             // Given
             List<EmergencyContactResponse> responses = List.of(
@@ -342,7 +344,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 긴급 연락처를 수정하면 200을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void updateEmergencyContact_success() throws Exception {
             // Given
             EmergencyContactRequest request = new EmergencyContactRequest(
@@ -373,7 +374,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("성공 - 긴급 연락처를 삭제하면 200을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void deleteEmergencyContact_success() throws Exception {
             // Given
             doNothing().when(patientService).deleteEmergencyContact(1L);
@@ -386,7 +386,6 @@ class PatientControllerTest {
 
         @Test
         @DisplayName("실패 - 존재하지 않는 긴급 연락처 삭제 시 404를 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void deleteEmergencyContact_fail_notFound() throws Exception {
             // Given
             doThrow(new BusinessException(ErrorCode.EMERGENCY_CONTACT_NOT_FOUND))

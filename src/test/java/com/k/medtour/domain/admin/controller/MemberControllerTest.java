@@ -6,6 +6,9 @@ import com.k.medtour.domain.admin.service.MemberService;
 import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,7 +17,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -43,13 +45,22 @@ class MemberControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     @Nested
     @DisplayName("GET /api/v1/members/staff/me")
     class GetStaffProfileApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "STAFF");
+        }
+
         @Test
         @DisplayName("성공 - 실무자 프로필이 조회된다")
-        @WithMockUser(roles = "STAFF")
         void getStaffProfile_success() throws Exception {
             // Given
             StaffProfileResponse response = new StaffProfileResponse(
@@ -69,7 +80,6 @@ class MemberControllerTest {
 
         @Test
         @DisplayName("실패 - 프로필이 없으면 404 반환")
-        @WithMockUser(roles = "STAFF")
         void getStaffProfile_fail_notFound() throws Exception {
             // Given
             given(memberService.getStaffProfile(any()))
@@ -85,9 +95,13 @@ class MemberControllerTest {
     @DisplayName("PUT /api/v1/members/staff/me")
     class UpdateStaffProfileApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "STAFF");
+        }
+
         @Test
         @DisplayName("성공 - 실무자 프로필이 수정된다")
-        @WithMockUser(roles = "STAFF")
         void updateStaffProfile_success() throws Exception {
             // Given
             StaffProfileUpdateRequest request = new StaffProfileUpdateRequest(
@@ -116,9 +130,13 @@ class MemberControllerTest {
     @DisplayName("GET /api/v1/members/agency")
     class GetAgencyProfileApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 에이전시 프로필이 조회된다")
-        @WithMockUser
         void getAgencyProfile_success() throws Exception {
             // Given
             AgencyProfileResponse response = new AgencyProfileResponse(
@@ -137,7 +155,6 @@ class MemberControllerTest {
 
         @Test
         @DisplayName("실패 - 에이전시 프로필이 없으면 404 반환")
-        @WithMockUser
         void getAgencyProfile_fail_notFound() throws Exception {
             // Given
             given(memberService.getAgencyProfile())
@@ -153,9 +170,13 @@ class MemberControllerTest {
     @DisplayName("GET /api/v1/members/agency/license")
     class LicenseVerifyApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 라이선스 검증 정보가 조회된다")
-        @WithMockUser
         void verifyLicense_success() throws Exception {
             // Given
             LicenseVerifyResponse response = new LicenseVerifyResponse(

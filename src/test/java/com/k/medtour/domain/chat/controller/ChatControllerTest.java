@@ -19,6 +19,9 @@ import com.k.medtour.domain.chat.service.ChatService;
 import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,7 +30,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -63,13 +65,22 @@ class ChatControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     @Nested
     @DisplayName("POST /api/v1/chat/rooms")
     class CreateRoomApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 채팅방을 생성하면 201을 반환한다")
-        @WithMockUser(roles = "ADMIN")
         void createRoom_success() throws Exception {
             // Given
             ChatRoomCreateRequest request = new ChatRoomCreateRequest(
@@ -107,7 +118,6 @@ class ChatControllerTest {
 
         @Test
         @DisplayName("실패 - 중복 채팅방이면 409를 반환한다")
-        @WithMockUser(roles = "ADMIN")
         void createRoom_fail_conflict() throws Exception {
             // Given
             ChatRoomCreateRequest request = new ChatRoomCreateRequest(
@@ -135,9 +145,13 @@ class ChatControllerTest {
     @DisplayName("GET /api/v1/chat/rooms/{roomId}/messages")
     class GetMessagesApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 메시지 이력을 조회한다")
-        @WithMockUser(roles = "PATIENT")
         void getMessages_success() throws Exception {
             // Given
             ChatMessageListResponse response = new ChatMessageListResponse(
@@ -168,9 +182,13 @@ class ChatControllerTest {
     @DisplayName("POST /api/v1/chat/rooms/{roomId}/messages")
     class SendMessageApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 텍스트 메시지를 전송하면 201을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void sendMessage_success() throws Exception {
             // Given
             ChatMessageSendRequest request = new ChatMessageSendRequest(
@@ -198,7 +216,6 @@ class ChatControllerTest {
 
         @Test
         @DisplayName("실패 - 참여자가 아닌 경우 403을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void sendMessage_fail_notParticipant() throws Exception {
             // Given
             ChatMessageSendRequest request = new ChatMessageSendRequest(
@@ -220,9 +237,13 @@ class ChatControllerTest {
     @DisplayName("POST /api/v1/chat/rooms/{roomId}/read")
     class MarkAsReadApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 읽음 처리를 수행한다")
-        @WithMockUser(roles = "PATIENT")
         void markAsRead_success() throws Exception {
             // Given
             ReadRequest request = new ReadRequest("msg-003");
@@ -245,9 +266,13 @@ class ChatControllerTest {
     @DisplayName("GET /api/v1/chat/admin/monitor")
     class MonitorApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 관리자 멀티챗 관제를 조회한다")
-        @WithMockUser(roles = "ADMIN")
         void monitorRooms_success() throws Exception {
             // Given
             MonitorResponse response = new MonitorResponse(
@@ -281,9 +306,13 @@ class ChatControllerTest {
     @DisplayName("POST /api/v1/chat/sos")
     class SosApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(10L, "STAFF");
+        }
+
         @Test
         @DisplayName("성공 - SOS를 전송하면 201을 반환한다")
-        @WithMockUser(roles = "STAFF")
         void sendSos_success() throws Exception {
             // Given
             SosRequest request = new SosRequest(
@@ -310,9 +339,13 @@ class ChatControllerTest {
     @DisplayName("POST /api/v1/chat/rooms/{roomId}/messages/file")
     class SendFileMessageApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 파일 메시지를 전송하면 201을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void sendFileMessage_success() throws Exception {
             // Given
             MockMultipartFile file = new MockMultipartFile(
