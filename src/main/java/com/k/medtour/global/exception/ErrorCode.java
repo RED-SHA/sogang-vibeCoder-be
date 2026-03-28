@@ -82,7 +82,20 @@ public enum ErrorCode {
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "FIL_002", "지원하지 않는 파일 형식입니다."),
     INVALID_FILE_CATEGORY(HttpStatus.BAD_REQUEST, "FIL_003", "유효하지 않은 파일 카테고리입니다."),
     FILE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "FIL_010", "파일 접근 권한이 없습니다."),
-    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FIL_011", "존재하지 않는 파일입니다.");
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FIL_011", "존재하지 않는 파일입니다."),
+
+    // Notification
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTI_001", "알림을 찾을 수 없습니다."),
+
+    // Aftercare
+    GUIDE_NOT_FOUND(HttpStatus.NOT_FOUND, "AFTER_001", "사후 관리 가이드를 찾을 수 없습니다."),
+    GUIDE_ALREADY_EXISTS(HttpStatus.CONFLICT, "AFTER_002", "해당 여정의 사후 관리 가이드가 이미 존재합니다."),
+    INVOICE_NOT_FOUND(HttpStatus.NOT_FOUND, "AFTER_003", "인보이스를 찾을 수 없습니다."),
+    INVOICE_ALREADY_EXISTS(HttpStatus.CONFLICT, "AFTER_004", "해당 여정의 인보이스가 이미 존재합니다."),
+    REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "AFTER_005", "해당 여정의 업무 종료 리포트가 이미 존재합니다."),
+
+    // Profile
+    ORGANIZATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PROFILE_001", "조직 프로필을 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

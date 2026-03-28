@@ -14,4 +14,6 @@ public interface FileRepository extends JpaRepository<FileEntity, Long> {
     List<FileEntity> findByUploaderIdAndDeletedAtIsNull(Long uploaderId);
 
     List<FileEntity> findByUploaderIdAndCategoryAndDeletedAtIsNull(Long uploaderId, FileCategory category);
+
+    List<FileEntity> findByCategoryAndDeletedAtIsNull(FileCategory category);
 }

@@ -23,4 +23,10 @@ public interface JourneyScheduleItemRepository extends JpaRepository<JourneySche
     );
 
     Optional<JourneyScheduleItem> findByIdAndJourneyId(Long id, Long journeyId);
+
+    @Query("SELECT COUNT(si) FROM JourneyScheduleItem si " +
+            "WHERE si.scheduledAt >= :start AND si.scheduledAt < :end AND si.deletedAt IS NULL")
+    long countByScheduledAtBetweenAndDeletedAtIsNull(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
 }

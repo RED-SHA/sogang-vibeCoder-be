@@ -39,4 +39,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, String
     long countByRoomId(@Param("roomId") String roomId);
 
     Optional<ChatMessage> findTopByChatRoom_RoomIdOrderBySentAtDesc(String roomId);
+
+    @Query("SELECT COUNT(m) FROM ChatMessage m")
+    long countUnreadMessages();
 }

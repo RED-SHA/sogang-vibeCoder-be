@@ -5,5 +5,6 @@ public enum FileCategory {
     MEDICAL_PHOTO,
     CHAT_FILE,
     PROOF_PHOTO,
-    DOCUMENT
+    DOCUMENT,
+    PORTFOLIO
 }
