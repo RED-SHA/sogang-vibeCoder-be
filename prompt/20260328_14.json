@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "14:06:05",
+    "prompt": "/ralph-loop:help 모든 컨트롤러에 swagger 적용해. 그리고 swagger 만들라는 명령어는 컨트롤러 클래스 만들때마다 훅으로 주입될 수 있도록 해"
+  },
+  {
+    "timestamp": "14:33:10",
+    "prompt": "/ralph-loop:ralph-loop 실행해보고 안되는 부분 식별해서 디버깅해. 수정이나 다른 모든 행위들도 깃플로우 전략"
+  },
+  {
+    "timestamp": "14:54:31",
+    "prompt": "도커 지금 실행중임"
+  },
+  {
+    "timestamp": "14:57:38",
+    "prompt": "확인할 수 있는 swagger url 가져와봐"
+  },
+  {
+    "timestamp": "14:58:33",
+    "prompt": "kill"
+  },
+  {
+    "timestamp": "14:59:37",
+    "prompt": "이제 문서화하자. 지금까지 구현했던 과정과 랄프루프 결과 보고서, 그리고 서버 구동 방법 및 swagger 진입 방법까지 리드미에 작성해."
+  }
+]

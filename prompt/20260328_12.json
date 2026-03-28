@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp": "12:08:05",
+    "prompt": "프롬프트 자동 저장 훅 테스트"
+  },
+  {
+    "timestamp": "12:09:40",
+    "prompt": "구현 전에 하네스 엔지니어링을 구축한 후 구현할거야. https://www.anthropic.com/engineering/harness-design-long-running-apps 이거 읽고 하네스 엔지니어링으 위한 에이전트를 먼저 구축해"
+  },
+  {
+    "timestamp": "12:24:37",
+    "prompt": "지금 구축하고 있는 백엔드 전반적인 아키텍쳐와 에이전트 아키텍쳐 리드미에 만들어.\n추가: 커밋 단위는 잘게 쪼개서 커밋하고 스프린트 종료마다 푸시. 브랜치 전략은 gitflow 전략을 따른다."
+  },
+  {
+    "timestamp": "12:29:11",
+    "prompt": "❯ /ralph-loop:ralph-loop 이제 스프린트 단위 구현 시작해.                                                                           \n  ⎿  Error: Shell command failed for pattern \"```!                                                                                 \n     \"/Users/chang-yehun/.claude/plugins/marketplaces/claude-plugins-official/plugins/ralph-loop/scripts/setup-ralph-loop.sh\" 이제 \n     스프린트 단위 구현 시작해.                                                                                                    \n     (eval):1: permission denied:                                                                                                  \n     /Users/chang-yehun/.claude/plugins/marketplaces/claude-plugins-official/plugins/ralph-loop/scripts/setup-ralph-loop.sh\n\n에러 해결해"
+  },
+  {
+    "timestamp": "12:29:43",
+    "prompt": "/ralph-loop:ralph-loop 이제 스프린트 단위 구현 시작해"
+  }
+]
