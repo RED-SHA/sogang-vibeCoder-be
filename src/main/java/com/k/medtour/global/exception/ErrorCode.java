@@ -54,6 +54,15 @@ public enum ErrorCode {
 
     // Journey
     JOURNEY_NOT_FOUND(HttpStatus.NOT_FOUND, "JOURNEY_001", "여정을 찾을 수 없습니다."),
+    JOURNEY_ACCESS_DENIED(HttpStatus.FORBIDDEN, "JOURNEY_002", "해당 여정에 대한 접근 권한이 없습니다."),
+    TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "JOURNEY_003", "여정 템플릿을 찾을 수 없습니다."),
+    TEMPLATE_DUPLICATE_NAME(HttpStatus.CONFLICT, "JOURNEY_004", "동일한 이름의 템플릿이 이미 존재합니다."),
+    SCHEDULE_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "JOURNEY_005", "일정 항목을 찾을 수 없습니다."),
+    SCHEDULE_ITEM_COMPLETED(HttpStatus.BAD_REQUEST, "JOURNEY_006", "이미 완료된 일정은 수정할 수 없습니다."),
+    INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "JOURNEY_007", "유효하지 않은 상태 전이입니다."),
+    STAFF_NOT_ASSIGNED(HttpStatus.FORBIDDEN, "JOURNEY_008", "해당 일정에 배정되지 않은 실무자입니다."),
+    ACTIVE_JOURNEY_EXISTS(HttpStatus.CONFLICT, "JOURNEY_009", "해당 환자에게 이미 진행 중인 여정이 존재합니다."),
+    TEMPLATE_IN_USE(HttpStatus.CONFLICT, "JOURNEY_010", "활성 여정에서 사용 중인 템플릿은 삭제할 수 없습니다."),
 
     // Proposal
     PROPOSAL_NOT_FOUND(HttpStatus.NOT_FOUND, "PROPOSAL_001", "견적서를 찾을 수 없습니다."),
