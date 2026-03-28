@@ -57,6 +57,9 @@ public enum ErrorCode {
 
     // Proposal
     PROPOSAL_NOT_FOUND(HttpStatus.NOT_FOUND, "PROPOSAL_001", "견적서를 찾을 수 없습니다."),
+    PROPOSAL_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PROPOSAL_002", "본인의 견적서만 접근할 수 있습니다."),
+    PROPOSAL_INVALID_STATUS(HttpStatus.BAD_REQUEST, "PROPOSAL_003", "유효하지 않은 견적서 상태 전이입니다."),
+    PROPOSAL_ALREADY_RESPONDED(HttpStatus.BAD_REQUEST, "PROPOSAL_004", "이미 응답한 견적서입니다."),
 
     // Chat
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_001", "채팅방을 찾을 수 없습니다."),
