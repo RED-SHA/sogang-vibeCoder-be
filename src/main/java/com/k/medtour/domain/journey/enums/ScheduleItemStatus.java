@@ -21,6 +21,7 @@ public enum ScheduleItemStatus {
         if (this == CANCELLED || this == COMPLETED) {
             return false;
         }
-        return this.ordinal() < next.ordinal() && FORWARD_ORDER.contains(next);
+        // Only allow transition to the next sequential status (no skipping steps)
+        return FORWARD_ORDER.contains(next) && next.ordinal() == this.ordinal() + 1;
     }
 }

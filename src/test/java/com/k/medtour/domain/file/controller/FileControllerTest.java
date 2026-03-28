@@ -7,6 +7,9 @@ import com.k.medtour.domain.file.service.FileService;
 import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -14,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -46,13 +48,22 @@ class FileControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @BeforeEach
+    void setUp() {
+        SecurityTestUtil.setAuthentication(1L, "PATIENT");
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     @Nested
     @DisplayName("POST /api/v1/files/upload")
     class UploadApiTest {
 
         @Test
         @DisplayName("성공 - 파일을 업로드하면 201을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void upload_success() throws Exception {
             // Given
             MockMultipartFile file = new MockMultipartFile(
@@ -80,7 +91,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("실패 - 파일 크기 초과 시 400을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void upload_fail_sizeExceeded() throws Exception {
             // Given
             MockMultipartFile file = new MockMultipartFile(
@@ -99,7 +109,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("실패 - 허용되지 않은 파일 형식이면 400을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void upload_fail_invalidType() throws Exception {
             // Given
             MockMultipartFile file = new MockMultipartFile(
@@ -118,7 +127,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("실패 - 유효하지 않은 카테고리면 400을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void upload_fail_invalidCategory() throws Exception {
             // Given
             MockMultipartFile file = new MockMultipartFile(
@@ -142,7 +150,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("성공 - 다운로드 URL을 생성하여 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void getDownloadUrl_success() throws Exception {
             // Given
             FileDownloadResponse response = new FileDownloadResponse(
@@ -163,7 +170,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("실패 - 존재하지 않는 파일이면 404를 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void getDownloadUrl_fail_notFound() throws Exception {
             // Given
             given(fileService.getDownloadUrl(999L))
@@ -182,7 +188,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("성공 - 파일을 삭제하면 200을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void delete_success() throws Exception {
             // Given
             doNothing().when(fileService).delete(anyLong(), any(), anyString());
@@ -195,7 +200,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("실패 - 타인의 파일 삭제 시 403을 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void delete_fail_accessDenied() throws Exception {
             // Given
             doThrow(new BusinessException(ErrorCode.FILE_ACCESS_DENIED))
@@ -209,7 +213,6 @@ class FileControllerTest {
 
         @Test
         @DisplayName("실패 - 존재하지 않는 파일 삭제 시 404를 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void delete_fail_notFound() throws Exception {
             // Given
             doThrow(new BusinessException(ErrorCode.FILE_NOT_FOUND))

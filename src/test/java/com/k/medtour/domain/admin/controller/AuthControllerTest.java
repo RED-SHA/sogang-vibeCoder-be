@@ -7,6 +7,9 @@ import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
 import com.k.medtour.global.exception.GlobalExceptionHandler;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,7 +18,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -42,6 +44,11 @@ class AuthControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
 
     @Nested
     @DisplayName("POST /api/v1/auth/oauth/{provider}")
@@ -151,9 +158,13 @@ class AuthControllerTest {
     @DisplayName("GET /api/v1/auth/roles")
     class RolesApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 역할 목록이 조회된다")
-        @WithMockUser(roles = "ADMIN")
         void getRoles_success() throws Exception {
             // Given
             List<RoleResponse> roles = List.of(
@@ -175,9 +186,13 @@ class AuthControllerTest {
     @DisplayName("PUT /api/v1/auth/users/{userId}/role")
     class ChangeRoleApiTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("실패 - 자기 자신의 역할 변경 시 403 반환")
-        @WithMockUser(roles = "ADMIN")
         void changeRole_fail_self() throws Exception {
             // Given
             RoleChangeRequest request = new RoleChangeRequest(2L);

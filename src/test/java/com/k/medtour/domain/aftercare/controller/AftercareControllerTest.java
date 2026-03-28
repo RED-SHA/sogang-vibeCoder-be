@@ -10,6 +10,9 @@ import com.k.medtour.domain.aftercare.dto.StaffReportResponse;
 import com.k.medtour.domain.aftercare.enums.InvoiceStatus;
 import com.k.medtour.domain.aftercare.service.AftercareService;
 import com.k.medtour.global.auth.jwt.JwtTokenProvider;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -51,13 +53,22 @@ class AftercareControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     @Nested
     @DisplayName("POST /api/v1/aftercare/guides")
     class CreateGuideTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 가이드를 생성한다")
-        @WithMockUser(roles = "ADMIN")
         void createGuide_success() throws Exception {
             AftercareGuideCreateRequest request = new AftercareGuideCreateRequest(
                     1L, "Post-Surgery Guide", "Rest well",
@@ -82,9 +93,13 @@ class AftercareControllerTest {
     @DisplayName("GET /api/v1/aftercare/guides/{journeyId}")
     class GetGuideTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 가이드를 조회한다")
-        @WithMockUser(roles = "PATIENT")
         void getGuide_success() throws Exception {
             AftercareGuideResponse response = new AftercareGuideResponse(
                     1L, 1L, "Guide", "Content", null, LocalDateTime.now(), LocalDateTime.now()
@@ -102,9 +117,13 @@ class AftercareControllerTest {
     @DisplayName("POST /api/v1/aftercare/invoices")
     class CreateInvoiceTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 인보이스를 생성한다")
-        @WithMockUser(roles = "ADMIN")
         void createInvoice_success() throws Exception {
             InvoiceCreateRequest request = new InvoiceCreateRequest(
                     1L, 2L, "USD", LocalDate.now().plusDays(30),
@@ -133,9 +152,13 @@ class AftercareControllerTest {
     @DisplayName("GET /api/v1/aftercare/invoices/{journeyId}")
     class GetInvoiceTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 인보이스를 조회한다")
-        @WithMockUser(roles = "ADMIN")
         void getInvoice_success() throws Exception {
             InvoiceResponse response = new InvoiceResponse(
                     1L, 1L, 2L, "INV-20260328-0001", "USD",
@@ -156,9 +179,13 @@ class AftercareControllerTest {
     @DisplayName("GET /api/v1/aftercare/invoices/me")
     class GetMyInvoicesTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 내 인보이스를 반환한다")
-        @WithMockUser(roles = "PATIENT")
         void getMyInvoices_success() throws Exception {
             given(aftercareService.getMyInvoices(anyLong())).willReturn(List.of());
 
@@ -172,9 +199,13 @@ class AftercareControllerTest {
     @DisplayName("POST /api/v1/aftercare/reports")
     class CreateReportTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "STAFF");
+        }
+
         @Test
         @DisplayName("성공 - 리포트를 생성한다")
-        @WithMockUser(roles = "STAFF")
         void createReport_success() throws Exception {
             StaffReportCreateRequest request = new StaffReportCreateRequest(
                     1L, "Completed all tasks", 8.0);

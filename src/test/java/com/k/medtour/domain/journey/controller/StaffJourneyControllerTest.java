@@ -12,6 +12,9 @@ import com.k.medtour.domain.journey.service.StaffAssignmentService;
 import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -19,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -52,12 +54,21 @@ class StaffJourneyControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @BeforeEach
+    void setUp() {
+        SecurityTestUtil.setAuthentication(10L, "STAFF");
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     @Nested
     @DisplayName("당일 업무 API")
     class TodayTasksApiTest {
 
         @Test
-        @WithMockUser(roles = "STAFF")
         @DisplayName("GET /staff/me/today - 당일 업무 조회")
         void getTodayTasks() throws Exception {
             StaffTodayResponse response = new StaffTodayResponse(
@@ -84,7 +95,6 @@ class StaffJourneyControllerTest {
     class PatientNoticeApiTest {
 
         @Test
-        @WithMockUser(roles = "STAFF")
         @DisplayName("GET /{journeyId}/patient-notice - 환자 특이사항 조회")
         void getPatientNotice() throws Exception {
             PatientNoticeResponse response = new PatientNoticeResponse(
@@ -101,7 +111,6 @@ class StaffJourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "STAFF")
         @DisplayName("GET /{journeyId}/patient-notice - 배정 안 된 실무자 403")
         void getPatientNotice_NotAssigned() throws Exception {
             given(staffAssignmentService.getPatientNotice(eq(100L), any()))
@@ -117,7 +126,6 @@ class StaffJourneyControllerTest {
     class StatusUpdateApiTest {
 
         @Test
-        @WithMockUser(roles = "STAFF")
         @DisplayName("PATCH /.../status - 상태 업데이트 성공")
         void updateStatus() throws Exception {
             StatusUpdateRequest request = new StatusUpdateRequest(ScheduleItemStatus.EN_ROUTE, "이동 시작");
@@ -139,7 +147,6 @@ class StaffJourneyControllerTest {
         }
 
         @Test
-        @WithMockUser(roles = "STAFF")
         @DisplayName("PATCH /.../status - 잘못된 상태 전이 400")
         void updateStatus_InvalidTransition() throws Exception {
             StatusUpdateRequest request = new StatusUpdateRequest(ScheduleItemStatus.COMPLETED, null);
@@ -159,7 +166,6 @@ class StaffJourneyControllerTest {
     class NavigationApiTest {
 
         @Test
-        @WithMockUser(roles = "STAFF")
         @DisplayName("GET /.../navigation - 딥링크 조회")
         void getNavigation() throws Exception {
             NavigationResponse response = new NavigationResponse(

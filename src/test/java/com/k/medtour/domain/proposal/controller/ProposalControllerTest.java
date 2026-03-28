@@ -18,6 +18,9 @@ import com.k.medtour.global.auth.jwt.JwtTokenProvider;
 import com.k.medtour.global.common.PageResponse;
 import com.k.medtour.global.exception.BusinessException;
 import com.k.medtour.global.exception.ErrorCode;
+import com.k.medtour.support.SecurityTestUtil;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -58,13 +60,22 @@ class ProposalControllerTest {
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
 
+    @AfterEach
+    void tearDown() {
+        SecurityTestUtil.clearAuthentication();
+    }
+
     @Nested
     @DisplayName("POST /api/v1/proposals - 견적서 생성")
     class CreateProposal {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 201 Created")
-        @WithMockUser(roles = "ADMIN")
         void success() throws Exception {
             // given
             List<ProposalItemDto> items = List.of(
@@ -100,7 +111,6 @@ class ProposalControllerTest {
 
         @Test
         @DisplayName("실패 - 필수 항목 누락 400")
-        @WithMockUser(roles = "ADMIN")
         void fail_validation() throws Exception {
             ProposalCreateRequest request = new ProposalCreateRequest(
                     null, "", "USD", null, List.of(), null, null
@@ -117,9 +127,13 @@ class ProposalControllerTest {
     @DisplayName("GET /api/v1/proposals - 견적서 목록 조회")
     class GetProposals {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 200 OK")
-        @WithMockUser(roles = "ADMIN")
         void success() throws Exception {
             List<ProposalListResponse> content = List.of(
                     new ProposalListResponse(50L, 5L, "VIP 패키지",
@@ -142,9 +156,13 @@ class ProposalControllerTest {
     @DisplayName("POST /api/v1/proposals/{id}/send - 견적서 발송")
     class SendProposal {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(1L, "ADMIN");
+        }
+
         @Test
         @DisplayName("성공 - 200 OK")
-        @WithMockUser(roles = "ADMIN")
         void success() throws Exception {
             ProposalSendResponse response = new ProposalSendResponse(
                     50L, ProposalStatus.SENT, LocalDateTime.now());
@@ -157,7 +175,6 @@ class ProposalControllerTest {
 
         @Test
         @DisplayName("실패 - 잘못된 상태 400")
-        @WithMockUser(roles = "ADMIN")
         void fail_invalidStatus() throws Exception {
             given(proposalService.sendProposal(50L))
                     .willThrow(new BusinessException(ErrorCode.PROPOSAL_INVALID_STATUS));
@@ -171,9 +188,13 @@ class ProposalControllerTest {
     @DisplayName("POST /api/v1/proposals/request - 견적 요청")
     class CreateProposalRequestTest {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 201 Created")
-        @WithMockUser(roles = "PATIENT")
         void success() throws Exception {
             ProposalRequestResponse response = new ProposalRequestResponse(
                     30L, ProposalRequestStatus.PENDING, LocalDateTime.now());
@@ -201,9 +222,13 @@ class ProposalControllerTest {
     @DisplayName("POST /api/v1/proposals/{id}/accept - 견적서 수락")
     class AcceptProposal {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 200 OK")
-        @WithMockUser(roles = "PATIENT")
         void success() throws Exception {
             ProposalAcceptResponse response = new ProposalAcceptResponse(
                     50L, ProposalStatus.ACCEPTED, LocalDateTime.now());
@@ -219,9 +244,13 @@ class ProposalControllerTest {
     @DisplayName("POST /api/v1/proposals/{id}/reject - 견적서 거절")
     class RejectProposal {
 
+        @BeforeEach
+        void setUp() {
+            SecurityTestUtil.setAuthentication(5L, "PATIENT");
+        }
+
         @Test
         @DisplayName("성공 - 200 OK")
-        @WithMockUser(roles = "PATIENT")
         void success() throws Exception {
             ProposalRejectResponse response = new ProposalRejectResponse(
                     50L, ProposalStatus.REJECTED, LocalDateTime.now());
@@ -234,7 +263,6 @@ class ProposalControllerTest {
 
         @Test
         @DisplayName("실패 - 이미 응답한 견적서 400")
-        @WithMockUser(roles = "PATIENT")
         void fail_alreadyResponded() throws Exception {
             given(proposalService.rejectProposal(eq(50L), any()))
                     .willThrow(new BusinessException(ErrorCode.PROPOSAL_ALREADY_RESPONDED));
