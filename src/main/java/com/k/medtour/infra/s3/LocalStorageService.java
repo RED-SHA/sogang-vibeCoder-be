@@ -17,7 +17,7 @@ import java.nio.file.StandardCopyOption;
 
 @Slf4j
 @Service
-@Profile("local")
+@Profile({"local", "test"})
 @Primary
 public class LocalStorageService implements StorageService {
 

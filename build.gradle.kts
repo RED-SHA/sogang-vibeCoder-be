@@ -64,6 +64,9 @@ dependencies {
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // H2 (test profile)
+    runtimeOnly("com.h2database:h2")
 }
 
 tasks.withType<Test> {
