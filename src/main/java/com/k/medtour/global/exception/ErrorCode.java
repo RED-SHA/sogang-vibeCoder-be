@@ -62,8 +62,12 @@ public enum ErrorCode {
     CHAT_ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_001", "채팅방을 찾을 수 없습니다."),
 
     // File
-    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FILE_001", "파일 업로드에 실패했습니다."),
-    INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "FILE_002", "허용되지 않은 파일 형식입니다.");
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FIL_000", "파일 업로드에 실패했습니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "FIL_001", "파일 크기가 20MB를 초과했습니다."),
+    INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "FIL_002", "지원하지 않는 파일 형식입니다."),
+    INVALID_FILE_CATEGORY(HttpStatus.BAD_REQUEST, "FIL_003", "유효하지 않은 파일 카테고리입니다."),
+    FILE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "FIL_010", "파일 접근 권한이 없습니다."),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FIL_011", "존재하지 않는 파일입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

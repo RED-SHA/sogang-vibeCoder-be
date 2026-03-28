@@ -23,6 +23,11 @@ spring:
     encoding: UTF-8
     fallback-to-system-locale: false
 
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+
   jackson:
     serialization:
       write-dates-as-timestamps: false
