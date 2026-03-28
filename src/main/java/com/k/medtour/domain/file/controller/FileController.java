@@ -6,6 +6,8 @@ import com.k.medtour.domain.file.service.FileService;
 import com.k.medtour.global.auth.UserPrincipal;
 import com.k.medtour.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,7 +24,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-@Tag(name = "File", description = "파일 업로드/다운로드/삭제 API")
+@Tag(name = "파일", description = "파일 업로드/다운로드/삭제 API")
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
@@ -31,6 +33,11 @@ public class FileController {
     private final FileService fileService;
 
     @Operation(summary = "파일 업로드", description = "범용 파일 업로드 (최대 20MB)")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "업로드 완료"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패")
+    })
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
     @ResponseStatus(HttpStatus.CREATED)
@@ -43,6 +50,11 @@ public class FileController {
     }
 
     @Operation(summary = "파일 다운로드 URL 생성", description = "Presigned URL 생성 (유효시간 1시간)")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "다운로드 URL 생성 완료"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "파일을 찾을 수 없음")
+    })
     @GetMapping("/{fileId}/download")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<FileDownloadResponse> getDownloadUrl(
@@ -52,6 +64,12 @@ public class FileController {
     }
 
     @Operation(summary = "파일 삭제", description = "본인 파일 또는 ADMIN만 삭제 가능")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "파일 삭제 완료"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "파일을 찾을 수 없음")
+    })
     @DeleteMapping("/{fileId}")
     @PreAuthorize("isAuthenticated()")
     public ApiResponse<Void> delete(
