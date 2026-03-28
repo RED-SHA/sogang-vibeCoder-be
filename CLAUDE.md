@@ -137,8 +137,15 @@
 
 - Java 21 (record, sealed class, pattern matching 적극 활용)
 - Spring Boot 3.x + Spring Security 6.x
-- 커밋 메시지: Conventional Commits (feat/fix/chore/docs)
-- 브랜치: feature/{req-id}-{short-desc} (예: feature/ADM-101-dashboard-overview)
+- 커밋 메시지: Conventional Commits (feat/fix/chore/docs/test/refactor)
+- 커밋 단위: 잘게 쪼개기 (Entity → Repository → Service → Controller → Test 각각 커밋)
+- 브랜치 전략: **Gitflow**
+  - `main`: 프로덕션 릴리스
+  - `develop`: 개발 통합
+  - `feature/sprint-{N}-{short-desc}`: 스프린트 단위 기능 개발
+  - `release/v{x.y.z}`: 릴리스 준비
+  - `hotfix/{desc}`: 긴급 수정
+- 푸시: 스프린트 종료 시 (evaluator PASS 후) feature → develop 머지 & 푸시
 - REST API: RESTful 설계, 응답은 공통 ApiResponse<T> 래핑
 - 예외 처리: GlobalExceptionHandler + 커스텀 비즈니스 예외
 - DTO ↔ Entity 변환: MapStruct 또는 record 기반 수동 매핑
