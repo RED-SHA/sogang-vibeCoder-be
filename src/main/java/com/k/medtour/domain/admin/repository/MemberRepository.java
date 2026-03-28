@@ -5,6 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.Optional;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
@@ -20,4 +23,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Query("SELECT m FROM Member m JOIN FETCH m.role WHERE m.email = :email")
     Optional<Member> findByEmailWithRole(@Param("email") String email);
+
+    @Query("SELECT m FROM Member m WHERE m.role.name = :roleName AND m.deletedAt IS NULL")
+    Page<Member> findAllByRoleName(@Param("roleName") String roleName, Pageable pageable);
 }
