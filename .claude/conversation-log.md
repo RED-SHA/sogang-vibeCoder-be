@@ -262,3 +262,48 @@ Use Case Description을 **ISO 29148:2018** 품질 기준으로 검토후 문서�
 - **근거** : (Pass 또는 Fail 판정 이유를 구체적으로 서술)
 - **수정 제안** : (Fail인 경우에만 수정 방향 제시)
 
+
+## 2026-04-26 15:36:19 (session: 310f3ce2)
+
+UseCaseDiagram.puml, UseCaseModeling.md의 정보만을 바탕으로 UC-ADM-07의 순수 Java 코드를 생성하세요.
+
+#### [제약 조건]
+
+- 외부 프레임워크(Spring, JPA 등)를 사용하지 않는다
+- Use Case Diagram에 명시된 정보 이외의 내용은 임의로 추가하지 않는다
+- 내부 구현 로직을 추론하여 채우지 않는다
+- 구현할 수 없는 부분은 `// TODO` 주석으로 표시한다
+
+## 2026-04-26 15:38:59 (session: f6dbcd8a)
+
+UseCaseDiagram.puml의 정보만을 바탕으로 UC-ADM-07의 순수 Java 코드를 생성하세요.
+산출물은 Output_L1 폴더를 만들고 해당폴더에 저장하세요.
+
+#### [제약 조건]
+
+- 외부 프레임워크(Spring, JPA 등)를 사용하지 않는다
+- Use Case Diagram에 명시된 정보 이외의 내용은 임의로 추가하지 않는다
+- 내부 구현 로직을 추론하여 채우지 않는다
+- 구현할 수 없는 부분은 `// TODO` 주석으로 표시한다
+
+
+## 2026-04-26 15:46:21 (session: f6dbcd8a)
+
+UseCaseDescription_UC-ADM-07_reviewd.md의 정보만을 바탕으로 UC-AD UC-ADM-07의 순수 Java 코드를 생성하세요.
+산출물은 Output_L2 폴더를 만들고 해당폴더에 저장하세요.
+
+#### [제약 조건]
+
+- 외부 프레임워크(Spring, JPA 등)를 사용하지 않는다
+- Use Case Description에 명시된 내용만을 근거로 구현한다
+- 명시되지 않은 내부 구현 로직은 임의로 추가하지 않는다
+- 구현할 수 없는 부분은 `// TODO` 주석으로 표시한다
+
+#### [구현 지침]
+
+- Description의 각 단계를 메서드 호출 순서로 변환한다
+- Include된 Abstract UC는 별도 독립 클래스로 구현한다
+- 각 코드 라인 옆에 대응되는 Description 단계 번호를 주석으로 표시한다
+- 초기 지연·배수·최대 시도 횟수는 명명 상수로 분리한다
+- 응답 객체의 boolean 필드로 모델링. 상수·매직 스트링 금지.
+- lock_held(A7), 권한 오류(A6.3) 등은 enum 으로 정의. 문자열 리터럴 금지.
