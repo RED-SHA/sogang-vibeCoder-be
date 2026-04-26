@@ -79,7 +79,7 @@ P-04 Airline Partner External Actor 추가, P-05 분리 진행해
 
 ## 2026-04-25 18:32:08 (session: 0bbf1443)
 
-partner다 빼
+세부 partner 항목을 삭제해
 
 ## 2026-04-25 18:32:57 (session: 0bbf1443)
 
@@ -307,3 +307,48 @@ UseCaseDescription_UC-ADM-07_reviewd.md의 정보만을 바탕으로 UC-AD UC-AD
 - 초기 지연·배수·최대 시도 횟수는 명명 상수로 분리한다
 - 응답 객체의 boolean 필드로 모델링. 상수·매직 스트링 금지.
 - lock_held(A7), 권한 오류(A6.3) 등은 enum 으로 정의. 문자열 리터럴 금지.
+
+## 2026-04-26 16:04:57 (session: 2d1520de)
+
+아래 분석항목에 따라 Step 1과 Step 2의 생성 코드를 비교, 결과를 한글로 작성하고 Eval_Output.md 파일로 만들어
+
+1. 클래스 수 비교
+2. Actor 구분 반영 여부
+3. Abstract UC가 독립 클래스로 분리되었는가
+4. `«include»` 관계가 코드에서 필드 또는 의존으로 표현되었는가
+5. Description의 각 단계가 메서드로 구현되었는가
+6. Alternatives의 예외 상황이 Exception 클래스로 구현되었는가
+7. Cancel이 별도로 처리되었는가
+8. Precondition이 가드 조건으로 구현되었는가
+9. Postcondition이 코드에 반영되었는가
+10. 자원 회수와 정상 종료가 구분되었는가
+11. 도메인 객체(엔티티/VO)가 추출되었는가
+13. 문자열 리터럴·매직 넘버대신 enum / 명명 상수를 사용하였는가
+14. 파라미터·반환 타입이 구체 도메인 타입인가,
+15. 생성자 주입, 인터페이스 의존을 통해서 단위 테스트 작성 가능 수준인가
+16. 도메인 어휘를 사용해서 역할 이름이 클래스/인터페이스명에 잘 반영되었는가
+
+
+## 2026-04-26 16:09:12 (session: 2d1520de)
+
+Step 1,2 가아니라 L1,L2로 표시해
+
+## 2026-04-26 16:11:57 (session: 2d1520de)
+
+이거 뭘 제출하라는거야 설명을 좀 해
+봐
+
+## 과제 제출 내용
+
+Step 1, 2, 3의 **prompt** 및 **Use Case Description 파일**
+
+- **발표자료**: `WS1_팀명_시스템명_발표자료.pptx`
+
+### 단계별 제출 항목
+
+| 단계 | 제출 항목 | 발표 포함 내용 |
+|------|----------|---------------|
+| **Step 1** | 최종 입력 프롬프트<br>`WS1_팀명_시스템명_UseCaseDiagrm.md` | 수정 전 / 수정 후 Use Case Diagram 비교 설명 |
+| **Step 2** | 학생 작성 Use Case Description<br>`WS1_팀명_시스템명_UseCaseDescription.md` | • AI 생성 Use Case Description에서 누락·모호 내용 → 수정 내용<br>• Use Case Description 품질검토 내용 |
+| **Step 3** | L1 / L2 코드 생성 Prompt<br>`WS1_팀명_시스템명_L1.md`<br>`WS1_팀명_시스템명_L2.md` | L1 코드 / L2 코드 / 구조적 차이 비교표 / 실험 소감 |
+
