@@ -28,16 +28,48 @@ Server Subsystem
 ```
 src/main/java/com/kmedical/
 ├── domain/
-│   ├── enums/       (21 enums: EN01~EN21)
+│   ├── enums/       (22 enums: EN01~EN21 + SystemState)
 │   └── entity/      (32 entities: C01~C32)
-├── dto/             (계층 간 데이터 전달 전용 DTO)
+├── dto/             (계층 간 데이터 전달 전용 DTO 45개)
 ├── adapter/         (5 adapters: INF-A01~INF-A05)
-├── control/         (19 controllers: SRV-C01~SRV-C19)
+├── control/         (19 controllers: SRV-C01~SRV-C19 + SystemStateRegistry)
+├── http/            (HTTP 핸들러 22개 — JDK HttpServer 바인딩)
+│   ├── JsonUtil         (JSON 직렬화/파싱 유틸)
+│   ├── BaseHandler      (공통 CORS·예외→HTTP 매핑)
+│   ├── HealthHandler    (GET /api/health)
+│   ├── AuthHandler      (SRV-C01, /api/auth/**)
+│   ├── AccessLinkHandler(SRV-C02, /api/access-links/**)
+│   ├── PassportHandler  (SRV-C03, /api/passports/**)
+│   ├── PatientHandler   (SRV-C04, /api/patients/**)
+│   ├── AgencyHandler    (SRV-C05, /api/agencies/**)
+│   ├── QuotationHandler (SRV-C06, /api/quotations/**)
+│   ├── TemplateHandler  (SRV-C07, /api/templates/**)
+│   ├── JourneyHandler   (SRV-C08, /api/journeys/**)
+│   ├── StaffHandler     (SRV-C09, /api/staff/**)
+│   ├── StaffAssignmentHandler (SRV-C10, /api/assignments)
+│   ├── WorkHandler      (SRV-C11, /api/work/**)
+│   ├── ChatHandler      (SRV-C12, /api/chat/**)
+│   ├── AlertHandler     (SRV-C13, /api/alerts)
+│   ├── SOSHandler       (SRV-C14, /api/sos/**)
+│   ├── InvoiceHandler   (SRV-C15, /api/invoices/**)
+│   ├── GuideHandler     (SRV-C16, /api/guides/**)
+│   ├── ReportHandler    (SRV-C17, /api/reports)
+│   ├── RBACHandler      (SRV-C18, /api/rbac/**)
+│   └── DashboardHandler (SRV-C19, /api/dashboard)
+├── App.java         (진입점 — Manual DI + HttpServer 기동)
 └── ifo/
     ├── admin/       (14 IFOs: IFO-A01~IFO-A14)
     ├── patient/     (13 IFOs: IFO-P01~IFO-P13)
     └── staff/       (10 IFOs: IFO-S01~IFO-S10)
 ```
+
+## 실행
+
+```bash
+./build.sh          # 컴파일 → JAR → 서버 기동 (http://localhost:8080)
+```
+
+자세한 빌드/실행 방법은 `BUILD.md` 참고.
 
 ## 핵심 제약 사항
 

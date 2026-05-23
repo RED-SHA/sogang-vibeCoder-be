@@ -181,5 +181,30 @@
 - [x] SOSAlertView (IFO-S09)
 - [x] DailyReportForm (IFO-S10)
 
+### HTTP Handlers (com.kmedical.http) — 신규 생성 대상
+- [x] JsonUtil (JSON 직렬화/역직렬화 유틸)
+- [x] BaseHandler (공통 요청/응답 처리, CORS, 예외→HTTP 매핑)
+- [x] HealthHandler (GET /api/health)
+- [x] QuotationHandler (SRV-C06 매핑, 5개 엔드포인트)
+- [x] JourneyHandler (SRV-C08 매핑, 4개 엔드포인트)
+- [x] AuthHandler (SRV-C01 매핑, POST /api/auth/login·logout·startup·closedown)
+- [x] AccessLinkHandler (SRV-C02 매핑, POST /api/access-links·verify, DELETE /api/access-links/{token})
+- [x] PassportHandler (SRV-C03 매핑, POST /api/passports/upload·review, GET /api/passports/{id})
+- [x] PatientHandler (SRV-C04 매핑, GET/POST /api/patients/**, DELETE /api/patients/{id}/emergency-contacts/{cid})
+- [x] AgencyHandler (SRV-C05 매핑, GET/POST /api/agencies, PUT /api/agencies/{id}/verify)
+- [x] TemplateHandler (SRV-C07 매핑, GET/POST /api/templates/**)
+- [x] StaffHandler (SRV-C09 매핑, GET/PUT /api/staff/**)
+- [x] StaffAssignmentHandler (SRV-C10 매핑, POST/GET /api/assignments)
+- [x] WorkHandler (SRV-C11 매핑, POST /api/work/status·photos, GET /api/work/history)
+- [x] ChatHandler (SRV-C12 매핑, POST/GET /api/chat/**)
+- [x] AlertHandler (SRV-C13 매핑, POST /api/alerts, GET /api/alerts)
+- [x] SOSHandler (SRV-C14 매핑, POST /api/sos, PUT /api/sos/{id}/resolve, GET /api/sos/unresolved)
+- [x] InvoiceHandler (SRV-C15 매핑, GET/POST /api/invoices/**)
+- [x] GuideHandler (SRV-C16 매핑, GET/POST /api/guides/**)
+- [x] ReportHandler (SRV-C17 매핑, POST/GET /api/reports)
+- [x] RBACHandler (SRV-C18 매핑, POST /api/rbac/assign·revoke, GET /api/rbac/{userId}/**)
+- [x] DashboardHandler (SRV-C19 매핑, GET /api/dashboard)
+- [x] App.java (전체 컨트롤러 Manual DI + HttpServer 셋업, 20개 컨텍스트 등록)
+
 ---
-## 완료 현황: 100% (전체 생성 완료)
+## 완료 현황: L3+L4 코드 100% / HTTP Handler 레이어 100% / 컴파일 0 errors

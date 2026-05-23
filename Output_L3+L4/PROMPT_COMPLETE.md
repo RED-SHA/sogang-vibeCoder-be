@@ -74,6 +74,33 @@ com.kmedical
 │   ├── RBACController       (SRV-C18)
 │   └── DashboardController  (SRV-C19)
 │
+├── http/                HTTP 핸들러 22개 (JDK 내장 HttpServer 바인딩)
+│   ├── JsonUtil             (JSON 직렬화/파싱 유틸 — 외부 라이브러리 없음)
+│   ├── BaseHandler          (공통: CORS, OPTIONS, 예외→HTTP 매핑)
+│   │                        ※ IllegalArgumentException→400, ClosedDown→503, 기타 IllegalStateException→409, Exception→500
+│   ├── HealthHandler        (GET /api/health)
+│   ├── AuthHandler          (SRV-C01, POST /api/auth/login·logout·startup·closedown)
+│   ├── AccessLinkHandler    (SRV-C02, POST /api/access-links·verify, DELETE /api/access-links/{token})
+│   ├── PassportHandler      (SRV-C03, POST /api/passports/upload·review, GET /api/passports/{id})
+│   ├── PatientHandler       (SRV-C04, GET/POST /api/patients/**, DELETE emergency-contacts)
+│   ├── AgencyHandler        (SRV-C05, GET/POST /api/agencies, PUT /api/agencies/{id}/verify)
+│   ├── QuotationHandler     (SRV-C06, /api/quotations/**)
+│   ├── TemplateHandler      (SRV-C07, /api/templates/**)
+│   ├── JourneyHandler       (SRV-C08, /api/journeys/**)
+│   ├── StaffHandler         (SRV-C09, GET/PUT /api/staff/**)
+│   ├── StaffAssignmentHandler (SRV-C10, POST/GET /api/assignments)
+│   ├── WorkHandler          (SRV-C11, POST /api/work/status·photos, GET /api/work/history)
+│   ├── ChatHandler          (SRV-C12, POST/GET /api/chat/**)
+│   ├── AlertHandler         (SRV-C13, POST/GET /api/alerts)
+│   ├── SOSHandler           (SRV-C14, POST /api/sos, PUT /api/sos/{id}/resolve, GET /api/sos/unresolved)
+│   ├── InvoiceHandler       (SRV-C15, /api/invoices/**)
+│   ├── GuideHandler         (SRV-C16, /api/guides/**)
+│   ├── ReportHandler        (SRV-C17, POST/GET /api/reports)
+│   ├── RBACHandler          (SRV-C18, POST /api/rbac/assign·revoke, GET /api/rbac/{userId}/roles·history)
+│   └── DashboardHandler     (SRV-C19, GET /api/dashboard)
+│
+├── App.java             진입점 — 19개 컨트롤러 Manual DI, 20개 HttpServer 컨텍스트 등록, port 8080
+│
 └── ifo/
     ├── admin/           관리자 웹 인터페이스 14개 (IFO-A01–A14)
     │   ├── DashboardView
@@ -147,7 +174,18 @@ com.kmedical
 
 ---
 
+## 실행
+
+```bash
+./build.sh   # 컴파일 → JAR → http://localhost:8080 기동
+```
+
+전체 엔드포인트 목록은 `BUILD.md` 참고.
+
+---
+
 ## 세션 재개 시
 
 `PROGRESS_TRACKER.md`에서 현재 완료 상태를 확인하세요.
-모든 클래스는 100% 완료 상태입니다. 누락 파일이 있으면 위 패키지 구조를 참고해 동일한 규칙(Pure Java, 프레임워크 없음, BCE 아키텍처)으로 생성하면 됩니다.
+L3+L4 코드 100%, HTTP Handler 레이어 100%, 컴파일 0 errors 상태입니다.
+누락 파일이 있으면 위 패키지 구조를 참고해 동일한 규칙(Pure Java, 프레임워크 없음, BCE 아키텍처)으로 생성하면 됩니다.
