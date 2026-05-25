@@ -10,6 +10,7 @@ import com.kmedical.dto.patient.PatientDTO;
 import com.kmedical.util.AuditLogger;
 import com.kmedical.util.ValidationUtil;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -71,6 +72,39 @@ public class PatientController {
     }
 
     /**
+     * 환자 프로필 정보를 갱신한다 (nationality, dateOfBirth, fullNameEn).
+     * 검증: nationality → ISO 3166-1 alpha-2, dateOfBirth → 1900-01-01 이후 과거/오늘
+     */
+    public PatientDTO savePatientProfile(PatientDTO dto) {
+        guardNotClosedDown();
+        ValidationUtil.requireNotNull(dto, "PatientDTO");
+        ValidationUtil.requireNotBlank(dto.getUserId(), "userId");
+
+        if (dto.getFullNameEn() != null && !dto.getFullNameEn().isEmpty()) {
+            ValidationUtil.requireValidFullNameEn(dto.getFullNameEn(), "fullNameEn");
+        }
+        if (dto.getNationality() != null && !dto.getNationality().isEmpty()) {
+            dto.setNationality(dto.getNationality().toUpperCase());
+            ValidationUtil.requireValidIso2Country(dto.getNationality());
+        }
+        if (dto.getDateOfBirth() != null) {
+            ValidationUtil.requirePastOrPresentDate(dto.getDateOfBirth(), "dateOfBirth");
+        }
+
+        Patient patient = findPatient(dto.getUserId());
+        if (dto.getFullNameEn() != null && !dto.getFullNameEn().isEmpty()) {
+            patient.setFullNameEn(dto.getFullNameEn());
+        }
+        if (dto.getNationality() != null && !dto.getNationality().isEmpty()) {
+            patient.setNationality(dto.getNationality());
+        }
+        if (dto.getDateOfBirth() != null) {
+            patient.setDateOfBirth(dto.getDateOfBirth());
+        }
+        return toDTO(patient);
+    }
+
+    /**
      * 영문 의료 문진표를 저장한다.
      * 검증: patientId not null, 목록 항목 길이 제한
      */
@@ -79,7 +113,13 @@ public class PatientController {
         ValidationUtil.requireNotNull(dto, "MedicalQuestionnaireDTO");
         ValidationUtil.requireNotBlank(dto.getPatientId(), "patientId");
 
-        // 각 목록 항목 길이 검증
+        // 각 목록 항목 건수·길이 검증
+        if (dto.getCurrentMedications() != null && dto.getCurrentMedications().size() > 50)
+            throw new IllegalArgumentException("currentMedications must not exceed 50 items.");
+        if (dto.getAllergies() != null && dto.getAllergies().size() > 30)
+            throw new IllegalArgumentException("allergies must not exceed 30 items.");
+        if (dto.getPastSurgeries() != null && dto.getPastSurgeries().size() > 20)
+            throw new IllegalArgumentException("pastSurgeries must not exceed 20 items.");
         validateStringList(dto.getCurrentMedications(), 200, "currentMedications item");
         validateStringList(dto.getAllergies(), 200, "allergies item");
         validateStringList(dto.getPastSurgeries(), 300, "pastSurgeries item");

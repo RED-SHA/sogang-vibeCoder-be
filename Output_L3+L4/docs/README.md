@@ -123,8 +123,6 @@ src/main/java/com/kmedical/
 | 문서 | 설명 |
 |------|------|
 | [L2_vs_L3L4_Analysis.md](L2_vs_L3L4_Analysis.md) | L2 vs L3+L4 종합 비교 분석 보고서 — ECB 분리, C/S 아키텍처, 상태 관리, 동시성, 클래스 수 변화(24→184) 분석 |
-| [C_Specification_Augmentation.md](C_Specification_Augmentation.md) | PART C 추가 명세 — 17개 클래스 용어 사전(Data Dictionary) + 3종 NFR(보안·로깅·성능) |
 | [BUILD.md](BUILD.md) | 컴파일·빌드·실행 가이드 및 전체 API 엔드포인트 목록 |
 | [PROGRESS_TRACKER.md](PROGRESS_TRACKER.md) | 구현 진척도 체크리스트 |
-| [PROMPT_COMPLETE.md](PROMPT_COMPLETE.md) | 세션 인수인계용 컨텍스트 요약 |
-| [PROMPT_COMPLETE.md](PROMPT_COMPLETE.md) | 세션 인수인계용 컨텍스트 전체 요약 (PART A~D 완료 상태) |
+| [PROMPT_COMPLETE.md](PROMPT_COMPLETE.md) | 세션 인수인계용 컨텍스트 전체 요약 |

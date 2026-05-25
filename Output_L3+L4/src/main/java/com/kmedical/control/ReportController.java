@@ -53,7 +53,7 @@ public class ReportController {
         }
 
         if (dto.getSpecialNotes() != null) {
-            ValidationUtil.requireMaxLength(dto.getSpecialNotes(), 3000, "specialNotes");
+            ValidationUtil.requireMaxLength(dto.getSpecialNotes(), 2000, "specialNotes");
         }
         if (dto.getAdditionalCostNote() != null) {
             ValidationUtil.requireMaxLength(dto.getAdditionalCostNote(), 500, "additionalCostNote");

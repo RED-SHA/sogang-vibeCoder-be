@@ -5,6 +5,7 @@ import com.kmedical.domain.entity.Admin;
 import com.kmedical.domain.entity.Patient;
 import com.kmedical.domain.entity.User;
 import com.kmedical.domain.enums.OAuthProviderType;
+import com.kmedical.domain.enums.OnboardingStatus;
 import com.kmedical.domain.enums.SystemState;
 import com.kmedical.dto.auth.OAuthLoginRequestDTO;
 import com.kmedical.dto.auth.OAuthLoginResponseDTO;
@@ -108,7 +109,9 @@ public class AuthController {
             return new OAuthLoginResponseDTO(sessionToken, userId, resolveUserType(user), isNewUser);
 
         } catch (Exception e) {
-            AuditLogger.log("AUTH_LOGIN", userId, "UNKNOWN", false, e.getMessage());
+            AuditLogger.log("AUTH_LOGIN", userId, "UNKNOWN", false,
+                    "authorizationCode=" + MaskingUtil.redact() +
+                    " error=" + e.getMessage());
             if (e instanceof IllegalArgumentException || e instanceof IllegalStateException) throw e;
             throw new IllegalStateException("OAuth login failed: " + e.getMessage());
         }
@@ -148,6 +151,7 @@ public class AuthController {
         newUser.setEmail(email);
         newUser.setOauthProvider(provider);
         newUser.setOauthSubjectId(subjectId);
+        newUser.setOnboardingStatus(OnboardingStatus.PENDING);
         newUser.setCreatedAt(LocalDateTime.now());
         userStore.put(newUser.getUserId(), newUser);
         return newUser;

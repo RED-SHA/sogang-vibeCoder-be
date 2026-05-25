@@ -201,7 +201,7 @@ com.kmedical
 
 ---
 
-## SA 기반 검증·NFR 리팩토링 (완료)
+## SA 기반 검증·NFR 리팩토링 1차 (완료)
 
 `com.kmedical.util` 패키지에 3개 유틸리티 클래스가 추가되었으며, 19개 Controller 전체에 적용되었다.
 
@@ -248,8 +248,32 @@ com.kmedical
 
 ---
 
-## 세션 재개 시
+## SA 교차 검증 2차 (완료)
 
-`PROGRESS_TRACKER.md`에서 현재 완료 상태를 확인하세요.
-L3+L4 코드 100% / HTTP Handler 레이어 100% / PART C 명세 문서 100% / PART D 리팩토링 100% / 컴파일 0 errors 상태입니다.
-누락 파일이 있으면 위 패키지 구조를 참고해 동일한 규칙(Pure Java, 프레임워크 없음, BCE 아키텍처)으로 생성하면 됩니다.
+### 미반영 7건 — ✅ 전원 수정 완료
+
+| ID | 파일 | SA 요구사항 | 수정 내용 |
+|----|------|------------|----------|
+| H-01 | `AuthController.java` | Patient 생성 시 `onboardingStatus = PENDING` | `newUser.setOnboardingStatus(OnboardingStatus.PENDING)` 추가 |
+| H-02 | `StaffController.java` | `experienceYears`: 0 ≤ value ≤ 50 | 범위 초과 시 `IllegalArgumentException` throw 추가 |
+| H-03 | `StaffController.java` | `displayNameEn`: `^[A-Za-z\s\-']+$`, 2-100자 | `requireValidFullNameEn(displayNameEn)` 호출 추가 |
+| H-04 | `ReportController.java` | `specialNotes` max **2000**자 | `requireMaxLength(..., 3000, ...)` → `2000` 수정 |
+| H-05 | `QuotationController.java` | `requiredServices` 1개 이상 필수 | `isEmpty()` 시 throw 추가 |
+| H-06 | `ChatController.java` | `originalText` min 1 not blank, `originalLang` Not Null | `requireNotBlank` + `requireNotNull(originalLang)` 추가 |
+| H-07 | `PatientController.java` | `currentMedications` ≤50, `allergies` ≤30, `pastSurgeries` ≤20 건수 제한 | 각 리스트 size 초과 시 throw 추가 |
+
+빌드 검증: `./build.sh` → 컴파일 완료 (191개 클래스, 0 errors)
+
+---
+
+### 부분 반영 7건 — ✅ M-01~M-06 수정 완료 / M-07 코드 이슈 없음
+
+| ID | 파일 | SA 요구사항 | 수정 내용 |
+|----|------|------------|----------|
+| M-01 | `AgencyController.java` | `portfolioItems` 최대 20건, 건당 500자 | size > 20 throw + 각 항목 requireMaxLength(500) 추가 |
+| M-02 | `PassportController.java` | `ocrNationality` `^[A-Z]{3}$` 형식 | 형식 불일치 시 `AuditLogger.warn("PASSPORT_NATIONALITY_FORMAT", ...)` 추가 |
+| M-03 | `JourneyController.java` | `title` 1-200자, `sortOrder` ≥0, `memo` max 1000자 | `addScheduleItem()` + `updateScheduleItem()` 양쪽에 검증 추가 |
+| M-04 | `InvoiceController.java` | `pdfUrl` HTTPS 필수 | `attachPdfUrl(invoiceId, pdfUrl)` 신규 메서드 — `requireHttpsUrl(pdfUrl)` 적용 |
+| M-05 | `PatientController.java` | `nationality` 입력 전 `toUpperCase()` 정규화 | `dto.setNationality(dto.getNationality().toUpperCase())` 후 ISO2 검증 |
+| M-06 | `AuthController.java` | `authorizationCode` 로그 노출 금지 | 실패 로그 detail에 `MaskingUtil.redact()` 명시 (`[REDACTED]`) |
+| M-07 | `AccessLinkController.java` | 잠금 5회/15분 경계값 | 코드 구현 완료 상태, 경계값 테스트 권고 (코드 변경 불필요) |

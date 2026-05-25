@@ -105,7 +105,10 @@ public class JourneyController {
             validateStatusTransition(item.getStatus(), request.getStatus());
             item.setStatus(request.getStatus());
         }
-        if (request.getTitle() != null) item.setTitle(request.getTitle());
+        if (request.getTitle() != null) {
+            ValidationUtil.requireLengthBetween(request.getTitle(), 1, 200, "title");
+            item.setTitle(request.getTitle());
+        }
         if (request.getScheduledStartAt() != null) item.setScheduledStartAt(request.getScheduledStartAt());
         if (request.getScheduledEndAt() != null) item.setScheduledEndAt(request.getScheduledEndAt());
         if (request.getLocationAddressEn() != null) item.setLocationAddressEn(request.getLocationAddressEn());
@@ -118,7 +121,10 @@ public class JourneyController {
             item.setLocationCoordLng(request.getLocationCoordLng());
         }
         if (request.getIsCritical() != null) item.setIsCritical(request.getIsCritical());
-        if (request.getMemo() != null) item.setMemo(request.getMemo());
+        if (request.getMemo() != null) {
+            ValidationUtil.requireMaxLength(request.getMemo(), 1000, "memo");
+            item.setMemo(request.getMemo());
+        }
 
         // scheduledEndAt > scheduledStartAt 보장
         if (item.getScheduledStartAt() != null && item.getScheduledEndAt() != null) {
@@ -144,6 +150,10 @@ public class JourneyController {
 
         findJourney(dto.getPatientJourneyId());
 
+        if (dto.getTitle() != null) ValidationUtil.requireLengthBetween(dto.getTitle(), 1, 200, "title");
+        if (dto.getSortOrder() != null && dto.getSortOrder() < 0)
+            throw new IllegalArgumentException("sortOrder must be >= 0.");
+        if (dto.getMemo() != null) ValidationUtil.requireMaxLength(dto.getMemo(), 1000, "memo");
         if (dto.getLocationCoordLat() != null) ValidationUtil.requireLatitude(dto.getLocationCoordLat());
         if (dto.getLocationCoordLng() != null) ValidationUtil.requireLongitude(dto.getLocationCoordLng());
         if (dto.getScheduledStartAt() != null && dto.getScheduledEndAt() != null) {

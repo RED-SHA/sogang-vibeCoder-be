@@ -80,9 +80,9 @@ public class ChatController {
         ValidationUtil.requireNotNull(request, "ChatMessageSendRequestDTO");
         ValidationUtil.requireNotBlank(request.getConversationId(), "conversationId");
         ValidationUtil.requireNotBlank(request.getSenderId(), "senderId");
-        if (request.getOriginalText() != null) {
-            ValidationUtil.requireMaxLength(request.getOriginalText(), 4000, "originalText");
-        }
+        ValidationUtil.requireNotBlank(request.getOriginalText(), "originalText");
+        ValidationUtil.requireMaxLength(request.getOriginalText(), 4000, "originalText");
+        ValidationUtil.requireNotNull(request.getOriginalLang(), "originalLang");
 
         long start = System.currentTimeMillis();
         try {

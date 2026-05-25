@@ -1,19 +1,8 @@
 # Specification Augmentation — K-의료관광솔루션
 
----
-
 ## 1. 용어 사전 (Data Dictionary)
 
-### 범례
-- **Not Null** 열: O = null 금지(IllegalArgumentException 던지기), △ = 조건부 필수, — = null 허용
-- **정규식·범위** 열: 위반 시 `throw new IllegalArgumentException("...")` 필수
-- **시스템 생성** 표기가 있는 필드는 외부 입력값을 그대로 설정하지 말고 서버에서 계산하여 덮어쓸 것
-
----
-
 ### 1.1 User (C01 — abstract)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -29,8 +18,6 @@
 
 ### 1.2 Patient (C03)
 
-`package com.kmedical.domain.entity` / `extends User`
-
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
 | `fullNameEn` | `String` | O | 2 ≤ len ≤ 100 | 영문·공백·하이픈·어포스트로피만 허용: `^[A-Za-z\s\-']+$` | 여권과 일치하는 영문 실명. 숫자·특수문자 포함 시 400 |
@@ -41,8 +28,6 @@
 ---
 
 ### 1.3 Staff (C04 — abstract)
-
-`package com.kmedical.domain.entity` / `extends User`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -57,8 +42,6 @@
 
 ### 1.4 Agency (C07)
 
-`package com.kmedical.domain.entity`
-
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
 | `nameKo` | `String` | O | 1 ≤ len ≤ 100 | — | 한국어 에이전시명 |
@@ -72,8 +55,6 @@
 ---
 
 ### 1.5 PassportInfo (C08)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -94,8 +75,6 @@
 
 ### 1.6 MedicalQuestionnaire (C09)
 
-`package com.kmedical.domain.entity`
-
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
 | `patientId` | `String` | O | — | UUID v4 형식 | 소유 환자 ID. 환자당 1건만 허용 |
@@ -109,8 +88,6 @@
 
 ### 1.7 EmergencyContact (C10)
 
-`package com.kmedical.domain.entity`
-
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
 | `patientId` | `String` | O | — | UUID v4 형식 | 소유 환자 ID |
@@ -119,13 +96,9 @@
 | `phoneE164` | `String` | O | 8 ≤ len ≤ 16 | E.164 형식: `^\+[1-9]\d{6,14}$` | 국제 전화번호. `+` 필수 포함. 위반 시 400 |
 | `sortOrder` | `Integer` | O | 1 ≤ value ≤ 2 | `1` 또는 `2` | 환자당 최대 2건 강제. 3 이상 설정 시 400 |
 
-**Control 검증 규칙**: `PatientController.addEmergencyContact()` 진입 시 해당 `patientId`의 기존 연락처 수를 조회하여 2건 이상이면 `throw new IllegalStateException("Emergency contact limit exceeded: max 2 per patient.")`.
-
 ---
 
 ### 1.8 QuotationRequest (C11)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -137,13 +110,9 @@
 | `expiresAt` | `LocalDateTime` | O | — | 시스템 계산: `createdAt + 7일` | 요청 만료일. 외부 입력 무시, 서버에서 강제 계산 |
 | `createdAt` | `LocalDateTime` | O | — | 시스템 생성 | 외부 입력 금지 |
 
-**Control 검증 규칙**: `QuotationController.createRequest()` 진입 시 해당 `patientId`의 `OPEN` 상태 요청 수를 조회하여 3건 이상이면 `throw new IllegalStateException("QuotationRequest OPEN limit exceeded: max 3 per patient.")`.
-
 ---
 
 ### 1.9 ScheduleItem (C15)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -159,18 +128,16 @@
 | `sortOrder` | `Integer` | O | value ≥ 0 | 음수 시 400 | 화면 표시 순서 |
 | `memo` | `String` | — | max 1000자 | — | 운영자 메모 |
 
-**상태 전이 검증 규칙**:
+**상태 전이 검증 규칙**
 ```
 SCHEDULED → IN_PROGRESS 허용
 IN_PROGRESS → COMPLETED 허용
-그 외 모든 전이 → throw new IllegalStateException("Invalid ScheduleItem status transition: " + current + " → " + next)
+그외 모든 전이 → 미허용
 ```
 
 ---
 
 ### 1.10 WorkProofPhoto (C18)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -184,8 +151,6 @@ IN_PROGRESS → COMPLETED 허용
 ---
 
 ### 1.11 ChatMessage (C20)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -202,8 +167,6 @@ IN_PROGRESS → COMPLETED 허용
 
 ### 1.12 Invoice (C24)
 
-`package com.kmedical.domain.entity`
-
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
 | `patientJourneyId` | `String` | O | — | UUID v4 형식 | 소속 여정 ID |
@@ -214,20 +177,18 @@ IN_PROGRESS → COMPLETED 허용
 | `issuedAt` | `LocalDateTime` | △ | — | 시스템 생성 | `status = ISSUED` 시 필수. `issueInvoice()` 내부에서만 설정 |
 | `pdfUrl` | `String` | — | max 1000자 | HTTPS URL | 발행된 PDF 다운로드 URL |
 
-**상태 전이 및 불변 규칙**:
+**상태 전이 및 불변 규칙**
 ```
 DRAFT → ISSUED 허용 (issueInvoice)
 ISSUED → CANCELLED 허용 (cancelInvoice)
-DRAFT → CANCELLED 금지 → throw new IllegalStateException("DRAFT invoices should not be cancelled via this method.")
-CANCELLED → * 금지 → throw new IllegalStateException("Invoice is already cancelled.")
-ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new IllegalStateException("Cannot modify an ISSUED invoice.")
+DRAFT → CANCELLED 금지
+CANCELLED → * 금지
+ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지
 ```
 
 ---
 
 ### 1.13 InvoiceItem (C25)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -240,8 +201,6 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 
 ### 1.14 AccessLink (C26)
 
-`package com.kmedical.domain.entity`
-
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
 | `token` | `String` | O | — | UUID v4 또는 Secure Random hex 64자: `^[0-9a-f]{64}$` | 접근 토큰. 예측 불가능해야 함. `Math.random()` 사용 금지 |
@@ -253,7 +212,7 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 | `failedAttempts` | `Integer` | O | 0 ≤ value | 초기값 `0`. 음수 설정 시 400 | 인증 실패 횟수 |
 | `lockedUntil` | `LocalDateTime` | — | — | 시스템 생성 | 5회 초과 실패 시 `LocalDateTime.now() + 15분` 설정 |
 
-**유형별 만료 시간 계산 규칙**:
+**유형별 만료 시간 계산 규칙**
 
 | `linkType` | 만료 = `createdAt +` |
 |---|---|
@@ -262,13 +221,9 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 | `STAFF_INVITATION` | 24시간 |
 | `INVOICE_VIEW` | 30일 |
 
-**잠금 규칙**: `failedAttempts > 5`이면 `throw new IllegalStateException("Access link is locked until " + lockedUntil)`. `lockedUntil` 이후라면 `failedAttempts = 0`으로 리셋.
-
 ---
 
 ### 1.15 DailyWorkReport (C29)
-
-`package com.kmedical.domain.entity`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -283,8 +238,6 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 
 ### 1.16 OAuthLoginRequestDTO
 
-`package com.kmedical.dto.auth`
-
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
 | `provider` | `OAuthProviderType` | O | — | `GOOGLE \| KAKAO \| LINE` | 인증 공급자. null 또는 미지원 값 시 400 |
@@ -294,8 +247,6 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 ---
 
 ### 1.17 SOSAlertRequestDTO
-
-`package com.kmedical.dto.sos`
 
 | 속성명 | 타입 | Not Null | 길이/범위 제한 | 허용값 / 정규식 | 비고 |
 |---|---|:---:|---|---|---|
@@ -320,7 +271,7 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 | NFR-PERF-02 | 성능 | `DashboardController.getDashboardData` | 2000ms 초과 시 `[WARN] PERF_DEGRADED` 로그. 부분 데이터라도 반환 | 동일 측정 방식. 빈 DTO 안전 반환 | 경고 로그 (클라이언트에 예외 노출 금지) |
 | NFR-PERF-03 | 성능 | `PassportController.uploadPassport` (3000ms), `ChatController.sendMessage` (1000ms) | 처리 시간 항상 `[PERF]` 로그 기록. 임계값 초과 시 `[WARN]` 추가 | `AuditLogger.perf()` 호출 | 경고 로그 |
 
-### NFR-SEC-01: 민감 정보 로그 마스킹
+### 2.1 NFR-SEC-01: 민감 정보 로그 마스킹
 
 다음 속성들은 로그(콘솔 출력 포함)에 원문을 절대 출력하지 않는다. 위반 시 개인정보 유출로 간주한다.
 
@@ -332,15 +283,15 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 | `AccessLink` | `token` | 앞 8자리만 표시 + `...` | `a1b2c3d4...` |
 | `PassportInfo` | `imageUrl` | 도메인 부분만 표시 | `https://storage.ex***.com/***` |
 
-### NFR-SEC-02: 접근 링크 토큰 생성 보안
+### 2.2 NFR-SEC-02: 접근 링크 토큰 생성 보안
 
 `AccessLink.token` 생성 시 `UUID.randomUUID()` 또는 `SecureRandom` 기반 64자리 hex만 허용한다.
 
-### NFR-SEC-03: HTTPS 전용 URL 필드
+### 2.3 NFR-SEC-03: HTTPS 전용 URL 필드
 
 `imageUrl`, `fileUrl`, `licenseDocumentUrl`, `pdfUrl`, `redirectUri` 등 URL을 저장하는 모든 필드는 `https://`로 시작해야 한다.
 
-### NFR-LOG-01: 감사 로그 표준 포맷
+### 2.4 NFR-LOG-01: 감사 로그 표준 포맷
 
 다음 Control 메서드 실행 시마다 표준 포맷으로 감사 로그를 콘솔(System.out)에 출력한다. 로그 레벨은 메서드 종류에 따라 구분한다.
 
@@ -370,14 +321,14 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 - 예외 발생 시: `RESULT=FAIL`, `DETAIL`에 예외 메시지 요약 (원문 그대로 노출 금지 — `sanitize` 처리)
 - `ACTOR`(userId)는 마스킹 불필요하되, 길이가 36자(UUID)인 경우 앞 8자리 + `...` 축약 허용
 
-### NFR-LOG-02: ClosedDown 상태 접근 시도 로깅
+### 2.5 NFR-LOG-02: ClosedDown 상태 접근 시도 로깅
 
 `guardNotClosedDown()`에서 `IllegalStateException`이 발생하는 경우, 다음 포맷으로 경고 로그를 출력한다.
 ```
 [WARN] {timestamp} | CLOSED_DOWN_ACCESS | METHOD={methodName} | ACTOR={userId}
 ```
 
-### NFR-PERF-01: SOS 알림 응답 시간 목표
+### 2.6 NFR-PERF-01: SOS 알림 응답 시간 목표
 
 `SOSController.triggerSOS()` 메서드는 **호출 후 500ms 이내**에 `EmergencyAlert`를 생성하고 알림 발송(PushAdapter 호출)을 시작해야 한다.
 
@@ -385,7 +336,7 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 1. `[WARN]` 로그 출력: `[PERF] SOS trigger exceeded 500ms threshold. elapsed={ms}ms`
 2. 정상 응답은 유지 (예외 발생 금지 — 지연 감지만)
 
-### NFR-PERF-02: 대시보드 조회 타임아웃
+### 2.7 NFR-PERF-02: 대시보드 조회 타임아웃
 
 `DashboardController.getDashboardData()` 메서드는 내부에서 여러 Controller를 순차 조회하므로, 전체 처리 시간을 측정하여 2000ms 초과 시 경고 로그를 출력하고 부분 데이터를 반환한다.
 
@@ -395,7 +346,7 @@ ISSUED 상태 인보이스의 totalAmountUSD, items 수정 금지 → throw new 
 
 **응답 규격**: 타임아웃이 발생해도 `DashboardDataDTO`를 빈 값으로라도 반환하며 예외를 클라이언트에게 노출하지 않는다.
 
-### NFR-PERF-03: 메서드별 처리 시간 기록 대상
+### 2.8 NFR-PERF-03: 메서드별 처리 시간 기록 대상
 
 다음 메서드는 처리 시간을 콘솔에 항상 기록한다. (`[PERF]` 접두사 사용)
 

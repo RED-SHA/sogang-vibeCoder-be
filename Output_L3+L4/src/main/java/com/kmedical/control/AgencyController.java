@@ -49,6 +49,13 @@ public class AgencyController {
         if (dto.getLicenseDocumentUrl() != null && !dto.getLicenseDocumentUrl().isEmpty()) {
             ValidationUtil.requireHttpsUrl(dto.getLicenseDocumentUrl(), "licenseDocumentUrl");
         }
+        if (dto.getPortfolioItems() != null) {
+            if (dto.getPortfolioItems().size() > 20)
+                throw new IllegalArgumentException("portfolioItems must not exceed 20 items.");
+            for (String item : dto.getPortfolioItems()) {
+                ValidationUtil.requireMaxLength(item, 500, "portfolioItems item");
+            }
+        }
 
         Agency agency;
         if (dto.getAgencyId() != null && agencyStore.containsKey(dto.getAgencyId())) {

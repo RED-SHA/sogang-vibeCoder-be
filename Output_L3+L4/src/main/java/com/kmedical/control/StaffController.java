@@ -50,6 +50,13 @@ public class StaffController {
         ValidationUtil.requireNotNull(dto, "StaffDTO");
         ValidationUtil.requireNotBlank(dto.getUserId(), "userId");
 
+        if (dto.getDisplayNameEn() != null && !dto.getDisplayNameEn().isEmpty()) {
+            ValidationUtil.requireValidFullNameEn(dto.getDisplayNameEn(), "displayNameEn");
+        }
+        if (dto.getExperienceYears() != null) {
+            if (dto.getExperienceYears() < 0 || dto.getExperienceYears() > 50)
+                throw new IllegalArgumentException("experienceYears must be between 0 and 50.");
+        }
         if (dto.getProfilePhotoUrl() != null && !dto.getProfilePhotoUrl().isEmpty()) {
             ValidationUtil.requireHttpsUrl(dto.getProfilePhotoUrl(), "profilePhotoUrl");
         }

@@ -55,6 +55,8 @@ public class QuotationController {
         if (request.getDesiredVisitDate() != null) {
             ValidationUtil.requireFutureDate(request.getDesiredVisitDate(), "desiredVisitDate");
         }
+        if (request.getRequiredServices() == null || request.getRequiredServices().isEmpty())
+            throw new IllegalArgumentException("requiredServices must contain at least 1 item.");
 
         long openCount = requestStore.values().stream()
                 .filter(r -> r.getPatientId().equals(request.getPatientId())

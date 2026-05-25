@@ -7,6 +7,7 @@ import com.kmedical.dto.passport.PassportInfoDTO;
 import com.kmedical.dto.passport.PassportReviewRequestDTO;
 import com.kmedical.dto.passport.PassportUploadRequestDTO;
 import com.kmedical.util.AuditLogger;
+import com.kmedical.util.MaskingUtil;
 import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDate;
@@ -61,6 +62,12 @@ public class PassportController {
             info.setOcrFullNameEn(ocrResult.getOcrFullNameEn());
             info.setOcrPassportNumber(ocrResult.getOcrPassportNumber());
             info.setOcrNationality(ocrResult.getOcrNationality());
+            if (ocrResult.getOcrNationality() != null &&
+                    !ocrResult.getOcrNationality().matches("^[A-Z]{3}$")) {
+                AuditLogger.warn("PASSPORT_NATIONALITY_FORMAT",
+                        "patientId=" + request.getPatientId() +
+                        " ocrNationality=" + ocrResult.getOcrNationality());
+            }
             info.setOcrExpiryDate(ocrResult.getOcrExpiryDate());
             info.setOcrConfidence(ocrResult.getOcrConfidence());
             info.setReviewStatus(PassportReviewStatus.PENDING);
@@ -78,6 +85,9 @@ public class PassportController {
             }
 
             passportStore.put(info.getPassportInfoId(), info);
+            AuditLogger.log("PASSPORT_OCR_UPLOAD", request.getPatientId(),
+                    MaskingUtil.maskUrl(request.getImageUrl()), true,
+                    "ocrConfidence=" + ocrResult.getOcrConfidence());
             return toDTO(info);
 
         } finally {

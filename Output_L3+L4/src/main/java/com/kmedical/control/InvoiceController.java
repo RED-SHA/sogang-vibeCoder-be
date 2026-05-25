@@ -158,6 +158,21 @@ public class InvoiceController {
     }
 
     /**
+     * 인보이스 PDF URL을 설정한다.
+     * 검증: HTTPS 필수 (NFR-SEC-03)
+     */
+    public InvoiceDTO attachPdfUrl(String invoiceId, String pdfUrl) {
+        guardNotClosedDown();
+        ValidationUtil.requireNotBlank(invoiceId, "invoiceId");
+        ValidationUtil.requireHttpsUrl(pdfUrl, "pdfUrl");
+        Invoice invoice = findInvoice(invoiceId);
+        if (invoice.getStatus() == InvoiceStatus.CANCELLED)
+            throw new IllegalStateException("Cannot attach PDF to a cancelled invoice.");
+        invoice.setPdfUrl(pdfUrl);
+        return toDTO(invoice);
+    }
+
+    /**
      * 인보이스를 조회한다.
      */
     public InvoiceDTO getInvoice(String invoiceId) {

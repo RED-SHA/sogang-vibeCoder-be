@@ -1,12 +1,15 @@
 package com.kmedical.util;
 
 import java.time.LocalDateTime;
+import java.util.logging.Logger;
 
 /**
  * 감사 로그·경고·성능 로그 표준 출력 유틸리티 (NFR-LOG-01, NFR-PERF-01~03)
- * 출력 대상: System.out (콘솔)
+ * 출력 대상: java.util.logging (JDK 표준 Logger)
  */
 public final class AuditLogger {
+
+    private static final Logger LOGGER = Logger.getLogger(AuditLogger.class.getName());
 
     private AuditLogger() {}
 
@@ -15,13 +18,13 @@ public final class AuditLogger {
      * 형식: [AUDIT] {ISO8601} | ACTION={} | ACTOR={} | TARGET={} | RESULT={SUCCESS|FAIL} | DETAIL={}
      */
     public static void log(String action, String actor, String target, boolean success, String detail) {
-        System.out.printf("[AUDIT] %s | ACTION=%s | ACTOR=%s | TARGET=%s | RESULT=%s | DETAIL=%s%n",
+        LOGGER.info(String.format("[AUDIT] %s | ACTION=%s | ACTOR=%s | TARGET=%s | RESULT=%s | DETAIL=%s",
                 LocalDateTime.now(),
                 action,
                 actor  != null ? actor  : "UNKNOWN",
                 target != null ? target : "-",
                 success ? "SUCCESS" : "FAIL",
-                detail != null ? sanitize(detail) : "");
+                detail != null ? sanitize(detail) : ""));
     }
 
     /**
@@ -29,10 +32,10 @@ public final class AuditLogger {
      * 형식: [WARN] {ISO8601} | {category} | {detail}
      */
     public static void warn(String category, String detail) {
-        System.out.printf("[WARN] %s | %s | %s%n",
+        LOGGER.warning(String.format("[WARN] %s | %s | %s",
                 LocalDateTime.now(),
                 category,
-                detail != null ? detail : "");
+                detail != null ? detail : ""));
     }
 
     /**
@@ -41,11 +44,11 @@ public final class AuditLogger {
      * 임계값 초과 시 [WARN] 추가 출력
      */
     public static void perf(String action, long elapsedMs, long thresholdMs) {
-        System.out.printf("[PERF] %s | ACTION=%s | elapsed=%dms | threshold=%dms%n",
-                LocalDateTime.now(), action, elapsedMs, thresholdMs);
+        LOGGER.info(String.format("[PERF] %s | ACTION=%s | elapsed=%dms | threshold=%dms",
+                LocalDateTime.now(), action, elapsedMs, thresholdMs));
         if (elapsedMs > thresholdMs) {
-            System.out.printf("[WARN] %s | PERF_DEGRADED | ACTION=%s | elapsed=%dms exceeded threshold=%dms%n",
-                    LocalDateTime.now(), action, elapsedMs, thresholdMs);
+            LOGGER.warning(String.format("[WARN] %s | PERF_DEGRADED | ACTION=%s | elapsed=%dms exceeded threshold=%dms",
+                    LocalDateTime.now(), action, elapsedMs, thresholdMs));
         }
     }
 
@@ -54,10 +57,10 @@ public final class AuditLogger {
      * 형식: [WARN] {ISO8601} | CLOSED_DOWN_ACCESS | METHOD={} | ACTOR={}
      */
     public static void closedDownAccess(String methodName, String actor) {
-        System.out.printf("[WARN] %s | CLOSED_DOWN_ACCESS | METHOD=%s | ACTOR=%s%n",
+        LOGGER.warning(String.format("[WARN] %s | CLOSED_DOWN_ACCESS | METHOD=%s | ACTOR=%s",
                 LocalDateTime.now(),
                 methodName,
-                actor != null ? actor : "UNKNOWN");
+                actor != null ? actor : "UNKNOWN"));
     }
 
     /** 예외 메시지에서 개인정보 패턴 제거 (로그 안전 출력) */

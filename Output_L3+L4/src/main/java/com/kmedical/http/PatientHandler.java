@@ -5,12 +5,14 @@ import com.kmedical.dto.patient.*;
 import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.*;
 
 /**
  * SRV-C04 PatientController HTTP 매핑
  *
  * GET    /api/patients/{id}                          환자 조회
+ * PUT    /api/patients/{id}/profile                  환자 프로필 갱신 (ISO2 국적, 생년월일)
  * POST   /api/patients/{id}/onboarding/submit        UC-P04 온보딩 제출
  * POST   /api/patients/{id}/onboarding/approve       관리자 온보딩 승인
  * POST   /api/patients/{id}/questionnaire            문진표 저장
@@ -38,6 +40,8 @@ public class PatientHandler extends BaseHandler {
 
         if ("GET".equals(method) && parts.length == 4) {
             handleGetPatient(ex, patientId);
+        } else if ("PUT".equals(method) && parts.length == 5 && "profile".equals(parts[4])) {
+            handleSaveProfile(ex, patientId);
         } else if ("POST".equals(method) && parts.length == 6 && "onboarding".equals(parts[4]) && "submit".equals(parts[5])) {
             handleSubmitOnboarding(ex, patientId);
         } else if ("POST".equals(method) && parts.length == 6 && "onboarding".equals(parts[4]) && "approve".equals(parts[5])) {
@@ -55,6 +59,18 @@ public class PatientHandler extends BaseHandler {
         } else {
             sendError(ex, 404, "Not Found: " + method + " " + path);
         }
+    }
+
+    private void handleSaveProfile(HttpExchange ex, String patientId) throws IOException {
+        Map<String, String> body = JsonUtil.parse(readBody(ex));
+        PatientDTO dto = new PatientDTO();
+        dto.setUserId(patientId);
+        dto.setFullNameEn(body.get("fullNameEn"));
+        dto.setNationality(body.get("nationality"));
+        String dob = body.get("dateOfBirth");
+        if (dob != null && !dob.isEmpty()) dto.setDateOfBirth(LocalDate.parse(dob));
+        PatientDTO result = patientController.savePatientProfile(dto);
+        sendJson(ex, 200, patientToMap(result));
     }
 
     private void handleGetPatient(HttpExchange ex, String id) throws IOException {

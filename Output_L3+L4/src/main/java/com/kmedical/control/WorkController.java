@@ -6,6 +6,7 @@ import com.kmedical.domain.entity.WorkStatusUpdate;
 import com.kmedical.dto.staff.WorkProofPhotoDTO;
 import com.kmedical.dto.staff.WorkStatusUpdateDTO;
 import com.kmedical.util.AuditLogger;
+import com.kmedical.util.MaskingUtil;
 import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
@@ -100,6 +101,9 @@ public class WorkController {
         photo.setRetentionExpiresAt(now.plusYears(1));
 
         photoStore.computeIfAbsent(request.getAssignmentId(), k -> new CopyOnWriteArrayList<>()).add(photo);
+        AuditLogger.log("WORK_PHOTO_UPLOAD", request.getStaffId(),
+                MaskingUtil.maskUrl(request.getFileUrl()), true,
+                "assignmentId=" + request.getAssignmentId());
 
         if (request.getPatientJourneyId() != null) {
             journeyAssignmentIndex
