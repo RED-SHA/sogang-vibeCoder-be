@@ -184,8 +184,72 @@ com.kmedical
 
 ---
 
+## 비교 분석 보고서 수치 (L2 vs L3+L4)
+
+`docs/L2_vs_L3L4_Analysis.md`에 전체 보고서가 작성되어 있음.
+
+| 항목 | L2 | L3+L4 |
+|------|-----|--------|
+| 총 클래스 수 | 24 | 184 (명세 기반 161 + AI 임의 23) |
+| 패키지 수 | 1 (default) | 6개 목적별 패키지 |
+| ECB 분리 | 혼재 (단일 클래스 7가지 책임) | 분리됨 (패키지+DTO 경계) |
+| C/S 아키텍처 | 없음 | 있음 (JDK HttpServer, 52개 엔드포인트) |
+| 상태 관리 | 모호함 (2개 enum) | 명확함 (22개 enum + Guard 79회) |
+| 동시성 처리 | 부분 (Thread.sleep 인터럽트) | 부분 (volatile 1곳, HashMap 비동기 안전 아님) |
+
+**AI 임의 생성 23개**: App.java + BaseHandler + JsonUtil + HealthHandler + 19개 XxxHandler
+
+---
+
+## SA 기반 검증·NFR 리팩토링 (완료)
+
+`com.kmedical.util` 패키지에 3개 유틸리티 클래스가 추가되었으며, 19개 Controller 전체에 적용되었다.
+
+| 클래스 | 역할 | 주요 메서드 |
+|--------|------|-------------|
+| `ValidationUtil` | 입력값 정적 검증 (15종) | requireNotBlank, requireValidEmail, requireHttpsUrl, requireValidE164Phone, requireLatitude/Longitude, requireFutureDate 등 |
+| `MaskingUtil` | 개인정보 마스킹 (NFR-SEC-01) | maskEmail, maskSubjectId, maskToken, maskUrl |
+| `AuditLogger` | 표준 감사 로그 출력 (NFR-LOG-01/02) | log(AUDIT), warn(WARN), perf(PERF+WARN), closedDownAccess |
+
+### NFR 구현 요약
+
+| NFR ID | 분류 | 적용 범위 | 구현 방법 |
+|--------|------|-----------|-----------|
+| NFR-SEC-01 | 보안 | 감사 로그 내 개인정보 | MaskingUtil.maskEmail/maskSubjectId |
+| NFR-SEC-02 | 보안 | AccessLink 토큰 생성 | SecureRandom → 64자 hex |
+| NFR-SEC-03 | 보안 | 모든 외부 URL | ValidationUtil.requireHttpsUrl |
+| NFR-LOG-01 | 로깅 | 11개 주요 비즈니스 이벤트 | AuditLogger.log() |
+| NFR-LOG-02 | 로깅 | ClosedDown 접근 차단 | AuditLogger.closedDownAccess() |
+| NFR-PERF-01 | 성능 | SOSController.triggerSOS | 500ms 임계값 + [PERF] 로그 |
+| NFR-PERF-02 | 성능 | DashboardController.getDashboardData | 2000ms 임계값 + 안전 폴백 |
+| NFR-PERF-03 | 성능 | ChatController.sendMessage | 1000ms 임계값 + [PERF] 로그 |
+
+### Controller별 주요 추가 사항
+
+- **AuthController**: AuditLogger(LOGIN/LOGOUT/STARTUP/CLOSEDOWN), MaskingUtil 적용
+- **AccessLinkController**: SecureRandom 64자 hex 토큰, 잠금 해제 자동 리셋
+- **PassportController**: HTTPS imageUrl 검증, OCR PERF 3000ms, PASSPORT_REVIEW 감사 로그
+- **PatientController**: E.164 전화 검증, fullNameEn 패턴 검증, 연락처 최대 2건 강제
+- **InvoiceController**: 금액 PositiveBigDecimal 검증, INVOICE_ISSUED/CANCELLED 감사 로그
+- **WorkController**: fileUrl HTTPS 검증, takenAt 과거 날짜 검증
+- **SOSController**: 좌표 범위 검증, PERF 500ms, SOS_TRIGGERED/RESOLVED 감사 로그
+- **DashboardController**: PERF 2000ms, 5개 서브쿼리 개별 폴백
+- **AgencyController**: licenseNumber 패턴 검증, 이메일 검증, isVerified=false 강제
+- **RBACController**: ROLE_ASSIGNED/REVOKED 감사 로그
+- **ChatController**: originalText 4000자 제한, PERF 1000ms
+- **JourneyController**: 좌표 범위 검증, scheduledEndAt > scheduledStartAt 검증
+- **QuotationController**: desiredVisitDate 미래 날짜 검증, 금액 NonNegative 검증
+- **ReportController**: reportDate=today 검증, 자정 이전 제출 검증, REPORT_SUBMITTED 감사 로그
+- **StaffController**: profilePhotoUrl HTTPS 검증
+- **StaffAssignmentController**: STAFF_ASSIGNED 감사 로그
+- **GuideController**: pdfUrl HTTPS 검증
+- **TemplateController**: agencyId/createdBy 필수값 검증
+- **AlertController**: ALERT_SENT/ALERT_FAILED 감사 로그
+
+---
+
 ## 세션 재개 시
 
 `PROGRESS_TRACKER.md`에서 현재 완료 상태를 확인하세요.
-L3+L4 코드 100%, HTTP Handler 레이어 100%, 컴파일 0 errors 상태입니다.
+L3+L4 코드 100% / HTTP Handler 레이어 100% / PART C 명세 문서 100% / PART D 리팩토링 100% / 컴파일 0 errors 상태입니다.
 누락 파일이 있으면 위 패키지 구조를 참고해 동일한 규칙(Pure Java, 프레임워크 없음, BCE 아키텍처)으로 생성하면 됩니다.

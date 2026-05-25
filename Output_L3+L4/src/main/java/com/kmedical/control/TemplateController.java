@@ -4,10 +4,13 @@ import com.kmedical.domain.entity.ItineraryTemplate;
 import com.kmedical.domain.entity.TemplateItem;
 import com.kmedical.dto.template.ItineraryTemplateDTO;
 import com.kmedical.dto.template.TemplateItemDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,14 +19,16 @@ import java.util.UUID;
  * SRV-C07 — TemplateController
  * 책임: 여정 템플릿·항목 CRUD.
  * UC: UC-A05
+ * NFR 적용: ConcurrentHashMap, CopyOnWriteArrayList, ValidationUtil
  */
 public class TemplateController {
 
-    private final Map<String, ItineraryTemplate> templateStore = new HashMap<>();
-    private final Map<String, List<TemplateItem>> itemStore = new HashMap<>();
+    private final Map<String, ItineraryTemplate> templateStore = new ConcurrentHashMap<>();
+    private final Map<String, List<TemplateItem>> itemStore = new ConcurrentHashMap<>();
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("TemplateController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -34,9 +39,9 @@ public class TemplateController {
      */
     public ItineraryTemplateDTO createTemplate(ItineraryTemplateDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getAgencyId() == null) {
-            throw new IllegalArgumentException("Template data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(dto, "ItineraryTemplateDTO");
+        ValidationUtil.requireNotBlank(dto.getAgencyId(), "agencyId");
+        ValidationUtil.requireNotBlank(dto.getCreatedBy(), "createdBy");
 
         ItineraryTemplate template = new ItineraryTemplate();
         template.setItineraryTemplateId(UUID.randomUUID().toString());
@@ -48,7 +53,7 @@ public class TemplateController {
         template.setUpdatedAt(LocalDateTime.now());
 
         templateStore.put(template.getItineraryTemplateId(), template);
-        itemStore.put(template.getItineraryTemplateId(), new ArrayList<>());
+        itemStore.put(template.getItineraryTemplateId(), new CopyOnWriteArrayList<>());
         return toTemplateDTO(template);
     }
 
@@ -57,9 +62,8 @@ public class TemplateController {
      */
     public ItineraryTemplateDTO updateTemplate(ItineraryTemplateDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getItineraryTemplateId() == null) {
-            throw new IllegalArgumentException("Template update data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(dto, "ItineraryTemplateDTO");
+        ValidationUtil.requireNotBlank(dto.getItineraryTemplateId(), "itineraryTemplateId");
 
         ItineraryTemplate template = findTemplate(dto.getItineraryTemplateId());
         template.setProductType(dto.getProductType());
@@ -73,6 +77,7 @@ public class TemplateController {
      */
     public ItineraryTemplateDTO getTemplate(String templateId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(templateId, "templateId");
         return toTemplateDTO(findTemplate(templateId));
     }
 
@@ -81,6 +86,7 @@ public class TemplateController {
      */
     public List<ItineraryTemplateDTO> getTemplatesByAgency(String agencyId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(agencyId, "agencyId");
         List<ItineraryTemplateDTO> result = new ArrayList<>();
         for (ItineraryTemplate t : templateStore.values()) {
             if (agencyId.equals(t.getAgencyId())) result.add(toTemplateDTO(t));
@@ -94,9 +100,8 @@ public class TemplateController {
      */
     public TemplateItemDTO addTemplateItem(TemplateItemDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getItineraryTemplateId() == null) {
-            throw new IllegalArgumentException("TemplateItem data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(dto, "TemplateItemDTO");
+        ValidationUtil.requireNotBlank(dto.getItineraryTemplateId(), "itineraryTemplateId");
 
         findTemplate(dto.getItineraryTemplateId());
 
@@ -109,7 +114,7 @@ public class TemplateController {
         item.setAssignedStaffRole(dto.getAssignedStaffRole());
         item.setSortOrder(dto.getSortOrder());
 
-        itemStore.get(dto.getItineraryTemplateId()).add(item);
+        itemStore.computeIfAbsent(dto.getItineraryTemplateId(), k -> new CopyOnWriteArrayList<>()).add(item);
         return toItemDTO(item);
     }
 
@@ -118,6 +123,7 @@ public class TemplateController {
      */
     public List<TemplateItemDTO> getTemplateItems(String templateId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(templateId, "templateId");
         findTemplate(templateId);
         List<TemplateItemDTO> result = new ArrayList<>();
         for (TemplateItem i : itemStore.getOrDefault(templateId, new ArrayList<>())) {

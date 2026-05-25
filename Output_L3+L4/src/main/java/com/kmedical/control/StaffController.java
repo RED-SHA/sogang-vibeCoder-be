@@ -5,9 +5,11 @@ import com.kmedical.domain.entity.Interpreter;
 import com.kmedical.domain.entity.Staff;
 import com.kmedical.domain.enums.StaffAvailability;
 import com.kmedical.dto.staff.StaffDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,13 +17,15 @@ import java.util.Map;
  * SRV-C09 — StaffController
  * 책임: 스태프 프로필·가용 상태 관리.
  * UC: UC-A08, UC-S02
+ * NFR 적용: ConcurrentHashMap, profilePhotoUrl HTTPS 검증, AuditLogger
  */
 public class StaffController {
 
-    private final Map<String, Staff> staffStore = new HashMap<>();
+    private final Map<String, Staff> staffStore = new ConcurrentHashMap<>();
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("StaffController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -32,17 +36,22 @@ public class StaffController {
      */
     public StaffDTO getStaff(String staffId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(staffId, "staffId");
         return toDTO(findStaff(staffId));
     }
 
     /**
      * 스태프 프로필을 수정한다.
      * System Response: 입력 검증 → Staff 속성 갱신 → DTO 반환
+     * 검증: profilePhotoUrl 제공 시 HTTPS 필수
      */
     public StaffDTO updateProfile(StaffDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getUserId() == null) {
-            throw new IllegalArgumentException("Staff profile data is incomplete.");
+        ValidationUtil.requireNotNull(dto, "StaffDTO");
+        ValidationUtil.requireNotBlank(dto.getUserId(), "userId");
+
+        if (dto.getProfilePhotoUrl() != null && !dto.getProfilePhotoUrl().isEmpty()) {
+            ValidationUtil.requireHttpsUrl(dto.getProfilePhotoUrl(), "profilePhotoUrl");
         }
 
         Staff staff = findStaff(dto.getUserId());
@@ -68,7 +77,8 @@ public class StaffController {
      */
     public StaffDTO updateAvailability(String staffId, StaffAvailability status) {
         guardNotClosedDown();
-        if (status == null) throw new IllegalArgumentException("Availability status is null.");
+        ValidationUtil.requireNotBlank(staffId, "staffId");
+        ValidationUtil.requireNotNull(status, "availabilityStatus");
         Staff staff = findStaff(staffId);
         staff.setAvailabilityStatus(status);
         return toDTO(staff);
@@ -79,6 +89,7 @@ public class StaffController {
      */
     public List<StaffDTO> getStaffByAgency(String agencyId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(agencyId, "agencyId");
         List<StaffDTO> result = new ArrayList<>();
         for (Staff s : staffStore.values()) {
             if (agencyId.equals(s.getAgencyId())) result.add(toDTO(s));
@@ -87,6 +98,7 @@ public class StaffController {
     }
 
     public void registerStaff(Staff staff) {
+        ValidationUtil.requireNotNull(staff, "Staff");
         staffStore.put(staff.getUserId(), staff);
     }
 

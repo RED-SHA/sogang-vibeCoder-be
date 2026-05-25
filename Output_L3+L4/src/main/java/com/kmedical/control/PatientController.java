@@ -7,10 +7,13 @@ import com.kmedical.domain.enums.OnboardingStatus;
 import com.kmedical.dto.patient.EmergencyContactDTO;
 import com.kmedical.dto.patient.MedicalQuestionnaireDTO;
 import com.kmedical.dto.patient.PatientDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,34 +22,34 @@ import java.util.UUID;
  * SRV-C04 — PatientController
  * 책임: 환자 온보딩, 문진, 긴급연락처 CRUD (최대 2개 제한).
  * UC: UC-A03, UC-P04, UC-P05
+ *
+ * NFR 적용: ConcurrentHashMap(Thread-safe), E.164 전화 검증, fullNameEn 검증
  */
 public class PatientController {
 
     private static final int MAX_EMERGENCY_CONTACTS = 2;
 
-    private final Map<String, Patient> patientStore = new HashMap<>();
-    private final Map<String, MedicalQuestionnaire> questionnaireStore = new HashMap<>();
-    private final Map<String, List<EmergencyContact>> contactStore = new HashMap<>();
+    private final Map<String, Patient>               patientStore       = new ConcurrentHashMap<>();
+    private final Map<String, MedicalQuestionnaire>  questionnaireStore = new ConcurrentHashMap<>();
+    private final Map<String, List<EmergencyContact>> contactStore      = new ConcurrentHashMap<>();
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("PatientController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
 
     /**
      * 환자 정보를 조회한다.
-     * System Response: patientId 검증 → Patient 조회 → DTO 반환
      */
     public PatientDTO getPatient(String patientId) {
         guardNotClosedDown();
-        Patient patient = findPatient(patientId);
-        return toDTO(patient);
+        return toDTO(findPatient(patientId));
     }
 
     /**
      * 환자 온보딩 상태를 SUBMITTED로 변경한다.
-     * System Response: 서류 제출 확인 → 상태 전이
      */
     public PatientDTO submitOnboarding(String patientId) {
         guardNotClosedDown();
@@ -61,29 +64,33 @@ public class PatientController {
     public PatientDTO approveOnboarding(String patientId, String adminId) {
         guardNotClosedDown();
         Patient patient = findPatient(patientId);
-        if (patient.getOnboardingStatus() != OnboardingStatus.SUBMITTED) {
+        if (patient.getOnboardingStatus() != OnboardingStatus.SUBMITTED)
             throw new IllegalStateException("Patient onboarding is not in SUBMITTED state.");
-        }
         patient.setOnboardingStatus(OnboardingStatus.APPROVED);
         return toDTO(patient);
     }
 
     /**
      * 영문 의료 문진표를 저장한다.
-     * System Response: 입력 검증 → MedicalQuestionnaire 생성 및 저장
+     * 검증: patientId not null, 목록 항목 길이 제한
      */
     public MedicalQuestionnaireDTO saveMedicalQuestionnaire(MedicalQuestionnaireDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getPatientId() == null) {
-            throw new IllegalArgumentException("MedicalQuestionnaire data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(dto, "MedicalQuestionnaireDTO");
+        ValidationUtil.requireNotBlank(dto.getPatientId(), "patientId");
+
+        // 각 목록 항목 길이 검증
+        validateStringList(dto.getCurrentMedications(), 200, "currentMedications item");
+        validateStringList(dto.getAllergies(), 200, "allergies item");
+        validateStringList(dto.getPastSurgeries(), 300, "pastSurgeries item");
+        ValidationUtil.requireMaxLength(dto.getMedicalNotes(), 3000, "medicalNotes");
 
         MedicalQuestionnaire q = new MedicalQuestionnaire();
         q.setQuestionnaireId(UUID.randomUUID().toString());
         q.setPatientId(dto.getPatientId());
-        q.setCurrentMedications(dto.getCurrentMedications());
-        q.setAllergies(dto.getAllergies());
-        q.setPastSurgeries(dto.getPastSurgeries());
+        q.setCurrentMedications(dto.getCurrentMedications() != null ? dto.getCurrentMedications() : new ArrayList<>());
+        q.setAllergies(dto.getAllergies()          != null ? dto.getAllergies()          : new ArrayList<>());
+        q.setPastSurgeries(dto.getPastSurgeries()  != null ? dto.getPastSurgeries()     : new ArrayList<>());
         q.setMedicalNotes(dto.getMedicalNotes());
         q.setSubmittedAt(LocalDateTime.now());
 
@@ -103,18 +110,20 @@ public class PatientController {
 
     /**
      * 긴급 연락처를 등록한다 (최대 2건 제한).
-     * System Response: 건수 제한 확인 → EmergencyContact 저장
+     * 검증: phoneE164 E.164 형식, fullNameEn 영문만, relationship 필수
      */
     public EmergencyContactDTO addEmergencyContact(EmergencyContactDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getPatientId() == null) {
-            throw new IllegalArgumentException("EmergencyContact data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(dto, "EmergencyContactDTO");
+        ValidationUtil.requireNotBlank(dto.getPatientId(), "patientId");
+        ValidationUtil.requireValidFullNameEn(dto.getFullNameEn(), "fullNameEn");
+        ValidationUtil.requireLengthBetween(dto.getRelationship(), 1, 50, "relationship");
+        ValidationUtil.requireValidE164Phone(dto.getPhoneE164());
 
-        List<EmergencyContact> contacts = contactStore.computeIfAbsent(dto.getPatientId(), k -> new ArrayList<>());
-        if (contacts.size() >= MAX_EMERGENCY_CONTACTS) {
-            throw new IllegalStateException("Emergency contacts limit reached (max " + MAX_EMERGENCY_CONTACTS + ").");
-        }
+        List<EmergencyContact> contacts = contactStore.computeIfAbsent(
+                dto.getPatientId(), k -> new CopyOnWriteArrayList<>());
+        if (contacts.size() >= MAX_EMERGENCY_CONTACTS)
+            throw new IllegalStateException("Emergency contact limit exceeded: max 2 per patient.");
 
         EmergencyContact contact = new EmergencyContact();
         contact.setContactId(UUID.randomUUID().toString());
@@ -146,6 +155,13 @@ public class PatientController {
         guardNotClosedDown();
         List<EmergencyContact> contacts = contactStore.getOrDefault(patientId, new ArrayList<>());
         contacts.removeIf(c -> c.getContactId().equals(contactId));
+    }
+
+    /**
+     * 신규 환자 등록 (AuthController 위임 처리)
+     */
+    public void registerPatient(Patient patient) {
+        patientStore.put(patient.getUserId(), patient);
     }
 
     // ── Mappers ───────────────────────────────────────────────────────────────
@@ -191,7 +207,10 @@ public class PatientController {
         return dto;
     }
 
-    public void registerPatient(Patient patient) {
-        patientStore.put(patient.getUserId(), patient);
+    private void validateStringList(List<String> list, int maxItemLen, String fieldName) {
+        if (list == null) return;
+        for (String item : list) {
+            ValidationUtil.requireMaxLength(item, maxItemLen, fieldName);
+        }
     }
 }

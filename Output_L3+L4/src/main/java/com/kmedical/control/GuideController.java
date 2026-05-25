@@ -8,10 +8,13 @@ import com.kmedical.dto.alert.AlertCreateRequestDTO;
 import com.kmedical.dto.guide.GuideCreateRequestDTO;
 import com.kmedical.dto.guide.GuideDeliveryRequestDTO;
 import com.kmedical.dto.guide.RecoveryGuideDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,12 +23,13 @@ import java.util.UUID;
  * SRV-C16 — GuideController
  * 책임: 회복 가이드 등록, 배포, 열람 이력 관리.
  * UC: UC-A10, UC-P13
+ * NFR 적용: ConcurrentHashMap, CopyOnWriteArrayList, pdfUrl HTTPS 검증, AuditLogger
  */
 public class GuideController {
 
     private final AlertController alertController;
-    private final Map<String, RecoveryGuide> guideStore = new HashMap<>();
-    private final Map<String, List<GuideDeliveryHistory>> deliveryStore = new HashMap<>();
+    private final Map<String, RecoveryGuide> guideStore = new ConcurrentHashMap<>();
+    private final Map<String, List<GuideDeliveryHistory>> deliveryStore = new ConcurrentHashMap<>();
 
     public GuideController(AlertController alertController) {
         this.alertController = alertController;
@@ -33,6 +37,7 @@ public class GuideController {
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("GuideController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -40,11 +45,17 @@ public class GuideController {
     /**
      * 회복 가이드를 등록한다.
      * System Response: 입력 검증 → RecoveryGuide 저장 → DTO 반환
+     * 검증: agencyId 필수, pdfUrl 제공 시 HTTPS 필수
      */
     public RecoveryGuideDTO createGuide(GuideCreateRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getAgencyId() == null) {
-            throw new IllegalArgumentException("Guide creation request is incomplete.");
+        ValidationUtil.requireNotNull(request, "GuideCreateRequestDTO");
+        ValidationUtil.requireNotBlank(request.getAgencyId(), "agencyId");
+        if (request.getTitleEn() != null) {
+            ValidationUtil.requireLengthBetween(request.getTitleEn(), 1, 200, "titleEn");
+        }
+        if (request.getPdfUrl() != null && !request.getPdfUrl().isEmpty()) {
+            ValidationUtil.requireHttpsUrl(request.getPdfUrl(), "pdfUrl");
         }
 
         RecoveryGuide guide = new RecoveryGuide();
@@ -66,9 +77,9 @@ public class GuideController {
      */
     public void deliverGuide(GuideDeliveryRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getRecoveryGuideId() == null || request.getPatientId() == null) {
-            throw new IllegalArgumentException("Guide delivery request is incomplete.");
-        }
+        ValidationUtil.requireNotNull(request, "GuideDeliveryRequestDTO");
+        ValidationUtil.requireNotBlank(request.getRecoveryGuideId(), "recoveryGuideId");
+        ValidationUtil.requireNotBlank(request.getPatientId(), "patientId");
 
         RecoveryGuide guide = findGuide(request.getRecoveryGuideId());
 
@@ -80,7 +91,7 @@ public class GuideController {
         history.setDeliveredAt(LocalDateTime.now());
         history.setIsVisible(true);
 
-        deliveryStore.computeIfAbsent(request.getPatientId(), k -> new ArrayList<>()).add(history);
+        deliveryStore.computeIfAbsent(request.getPatientId(), k -> new CopyOnWriteArrayList<>()).add(history);
 
         alertController.sendAlert(new AlertCreateRequestDTO(
                 AlertType.GUIDE_SHARED, AlertChannel.PUSH, request.getPatientId(),
@@ -92,6 +103,7 @@ public class GuideController {
      */
     public RecoveryGuideDTO getGuide(String guideId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(guideId, "guideId");
         return toDTO(findGuide(guideId));
     }
 
@@ -100,6 +112,7 @@ public class GuideController {
      */
     public List<RecoveryGuideDTO> getGuidesForPatient(String patientId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(patientId, "patientId");
         List<RecoveryGuideDTO> result = new ArrayList<>();
         for (GuideDeliveryHistory h : deliveryStore.getOrDefault(patientId, new ArrayList<>())) {
             if (Boolean.TRUE.equals(h.getIsVisible())) {

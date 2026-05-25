@@ -71,6 +71,31 @@ src/main/java/com/kmedical/
 
 자세한 빌드/실행 방법은 `BUILD.md` 참고.
 
+## SA 기반 검증·NFR 아키텍처
+
+`com.kmedical.util` 패키지에 3개 유틸리티 클래스가 추가되었으며, 19개 Controller 전체에 적용된다.
+
+| 클래스 | 역할 | 주요 메서드 |
+|--------|------|-------------|
+| `ValidationUtil` | 입력값 정적 검증 | requireNotBlank, requireValidEmail, requireHttpsUrl, requireValidE164Phone, requireLatitude/Longitude, requireFutureDate 등 15종 |
+| `MaskingUtil` | 개인정보 마스킹 (NFR-SEC-01) | maskEmail, maskSubjectId, maskToken, maskUrl |
+| `AuditLogger` | 표준 감사 로그 출력 (NFR-LOG-01/02) | log(AUDIT), warn(WARN), perf(PERF+WARN), closedDownAccess |
+
+### NFR 구현 요약
+
+| NFR ID | 분류 | 적용 범위 | 구현 방법 |
+|--------|------|-----------|-----------|
+| NFR-SEC-01 | 보안 | 감사 로그 내 개인정보 | MaskingUtil.maskEmail/maskSubjectId |
+| NFR-SEC-02 | 보안 | AccessLink 토큰 생성 | SecureRandom → 64자 hex |
+| NFR-SEC-03 | 보안 | 모든 외부 URL | ValidationUtil.requireHttpsUrl |
+| NFR-LOG-01 | 로깅 | 11개 주요 비즈니스 이벤트 | AuditLogger.log() |
+| NFR-LOG-02 | 로깅 | ClosedDown 접근 차단 | AuditLogger.closedDownAccess() |
+| NFR-PERF-01 | 성능 | SOSController.triggerSOS | 500ms 임계값 + [PERF] 로그 |
+| NFR-PERF-02 | 성능 | DashboardController.getDashboardData | 2000ms 임계값 + 안전 폴백 |
+| NFR-PERF-03 | 성능 | ChatController.sendMessage | 1000ms 임계값 + [PERF] 로그 |
+
+---
+
 ## 핵심 제약 사항
 
 | # | 제약 |
@@ -92,3 +117,14 @@ src/main/java/com/kmedical/
 - `SystemState.RUNNING` / `SystemState.CLOSED_DOWN`
 - startUp() / closeDown() 메서드는 `AuthController`에 구현
 - 모든 Control 메서드 진입부에 `guardNotClosedDown()` 호출
+
+## 분석 문서
+
+| 문서 | 설명 |
+|------|------|
+| [L2_vs_L3L4_Analysis.md](L2_vs_L3L4_Analysis.md) | L2 vs L3+L4 종합 비교 분석 보고서 — ECB 분리, C/S 아키텍처, 상태 관리, 동시성, 클래스 수 변화(24→184) 분석 |
+| [C_Specification_Augmentation.md](C_Specification_Augmentation.md) | PART C 추가 명세 — 17개 클래스 용어 사전(Data Dictionary) + 3종 NFR(보안·로깅·성능) |
+| [BUILD.md](BUILD.md) | 컴파일·빌드·실행 가이드 및 전체 API 엔드포인트 목록 |
+| [PROGRESS_TRACKER.md](PROGRESS_TRACKER.md) | 구현 진척도 체크리스트 |
+| [PROMPT_COMPLETE.md](PROMPT_COMPLETE.md) | 세션 인수인계용 컨텍스트 요약 |
+| [PROMPT_COMPLETE.md](PROMPT_COMPLETE.md) | 세션 인수인계용 컨텍스트 전체 요약 (PART A~D 완료 상태) |

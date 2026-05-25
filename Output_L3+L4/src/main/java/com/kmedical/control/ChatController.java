@@ -9,11 +9,13 @@ import com.kmedical.dto.chat.AttachmentDTO;
 import com.kmedical.dto.chat.ChatMessageDTO;
 import com.kmedical.dto.chat.ChatMessageSendRequestDTO;
 import com.kmedical.dto.chat.ConversationDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,13 +24,16 @@ import java.util.UUID;
  * SRV-C12 — ChatController
  * 책임: 채팅 생성/송수신, 자동 번역 처리.
  * UC: UC-A09, UC-P09, UC-S09, UC-T01
+ * NFR 적용: ConcurrentHashMap, originalText 4000자 제한, PERF 로깅(1000ms, NFR-PERF-03)
  */
 public class ChatController {
 
+    private static final long CHAT_PERF_THRESHOLD_MS = 1000L;
+
     private final TranslationAdapter translationAdapter;
-    private final Map<String, Conversation> conversationStore = new HashMap<>();
-    private final Map<String, List<ChatMessage>> messageStore = new HashMap<>();
-    private final Map<String, List<Attachment>> attachmentStore = new HashMap<>();
+    private final Map<String, Conversation> conversationStore = new ConcurrentHashMap<>();
+    private final Map<String, List<ChatMessage>> messageStore = new ConcurrentHashMap<>();
+    private final Map<String, List<Attachment>> attachmentStore = new ConcurrentHashMap<>();
 
     public ChatController(TranslationAdapter translationAdapter) {
         this.translationAdapter = translationAdapter;
@@ -36,6 +41,7 @@ public class ChatController {
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("ChatController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -47,9 +53,8 @@ public class ChatController {
     public ConversationDTO createConversation(String patientJourneyId, ConversationType type,
                                                List<String> participantIds, String coordinatorId) {
         guardNotClosedDown();
-        if (patientJourneyId == null || type == null) {
-            throw new IllegalArgumentException("Conversation creation data is incomplete.");
-        }
+        ValidationUtil.requireNotBlank(patientJourneyId, "patientJourneyId");
+        ValidationUtil.requireNotNull(type, "conversationType");
 
         Conversation conv = new Conversation();
         conv.setConversationId(UUID.randomUUID().toString());
@@ -61,42 +66,52 @@ public class ChatController {
         conv.setCreatedAt(LocalDateTime.now());
 
         conversationStore.put(conv.getConversationId(), conv);
-        messageStore.put(conv.getConversationId(), new ArrayList<>());
+        messageStore.put(conv.getConversationId(), new CopyOnWriteArrayList<>());
         return toConvDTO(conv);
     }
 
     /**
      * 메시지를 발송하고 자동 번역을 수행한다 (UC-T01).
      * System Response: 메시지 저장 → TranslationAdapter 번역 요청 → 번역문 저장
+     * NFR-PERF-03: 1000ms 처리 시간 목표, 초과 시 [WARN] 로그
      */
     public ChatMessageDTO sendMessage(ChatMessageSendRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getConversationId() == null || request.getSenderId() == null) {
-            throw new IllegalArgumentException("Message send request is incomplete.");
+        ValidationUtil.requireNotNull(request, "ChatMessageSendRequestDTO");
+        ValidationUtil.requireNotBlank(request.getConversationId(), "conversationId");
+        ValidationUtil.requireNotBlank(request.getSenderId(), "senderId");
+        if (request.getOriginalText() != null) {
+            ValidationUtil.requireMaxLength(request.getOriginalText(), 4000, "originalText");
         }
 
-        Conversation conv = findConversation(request.getConversationId());
-        if (!Boolean.TRUE.equals(conv.getIsActive())) {
-            throw new IllegalStateException("Conversation is not active.");
-        }
-
-        ChatMessage msg = new ChatMessage();
-        msg.setChatMessageId(UUID.randomUUID().toString());
-        msg.setConversationId(request.getConversationId());
-        msg.setSenderId(request.getSenderId());
-        msg.setOriginalText(request.getOriginalText());
-        msg.setOriginalLang(request.getOriginalLang());
-        msg.setSentAt(LocalDateTime.now());
-
+        long start = System.currentTimeMillis();
         try {
-            String translated = translationAdapter.translate(
-                    request.getOriginalText(), request.getOriginalLang(), null);
-            msg.setTranslatedText(translated);
-        } catch (Exception ignored) {
-        }
+            Conversation conv = findConversation(request.getConversationId());
+            if (!Boolean.TRUE.equals(conv.getIsActive())) {
+                throw new IllegalStateException("Conversation is not active.");
+            }
 
-        messageStore.get(request.getConversationId()).add(msg);
-        return toMsgDTO(msg);
+            ChatMessage msg = new ChatMessage();
+            msg.setChatMessageId(UUID.randomUUID().toString());
+            msg.setConversationId(request.getConversationId());
+            msg.setSenderId(request.getSenderId());
+            msg.setOriginalText(request.getOriginalText());
+            msg.setOriginalLang(request.getOriginalLang());
+            msg.setSentAt(LocalDateTime.now());
+
+            try {
+                String translated = translationAdapter.translate(
+                        request.getOriginalText(), request.getOriginalLang(), null);
+                msg.setTranslatedText(translated);
+            } catch (Exception ignored) {
+            }
+
+            messageStore.computeIfAbsent(request.getConversationId(), k -> new CopyOnWriteArrayList<>()).add(msg);
+            return toMsgDTO(msg);
+
+        } finally {
+            AuditLogger.perf("CHAT_SEND_MESSAGE", System.currentTimeMillis() - start, CHAT_PERF_THRESHOLD_MS);
+        }
     }
 
     /**
@@ -104,6 +119,7 @@ public class ChatController {
      */
     public List<ChatMessageDTO> getMessages(String conversationId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(conversationId, "conversationId");
         findConversation(conversationId);
         List<ChatMessageDTO> result = new ArrayList<>();
         for (ChatMessage m : messageStore.getOrDefault(conversationId, new ArrayList<>())) {
@@ -118,8 +134,12 @@ public class ChatController {
      */
     public AttachmentDTO addAttachment(String chatMessageId, AttachmentDTO dto) {
         guardNotClosedDown();
-        if (chatMessageId == null || dto == null || dto.getFileUrl() == null) {
-            throw new IllegalArgumentException("Attachment data is incomplete.");
+        ValidationUtil.requireNotBlank(chatMessageId, "chatMessageId");
+        ValidationUtil.requireNotNull(dto, "AttachmentDTO");
+        if (dto.getFileUrl() != null) {
+            ValidationUtil.requireHttpsUrl(dto.getFileUrl(), "fileUrl");
+        } else {
+            throw new IllegalArgumentException("fileUrl must not be null.");
         }
 
         Attachment att = new Attachment();
@@ -130,7 +150,7 @@ public class ChatController {
         att.setFileSizeBytes(dto.getFileSizeBytes());
         att.setUploadedAt(LocalDateTime.now());
 
-        attachmentStore.computeIfAbsent(chatMessageId, k -> new ArrayList<>()).add(att);
+        attachmentStore.computeIfAbsent(chatMessageId, k -> new CopyOnWriteArrayList<>()).add(att);
 
         AttachmentDTO result = new AttachmentDTO();
         result.setAttachmentId(att.getAttachmentId());
@@ -147,6 +167,7 @@ public class ChatController {
      */
     public void closeConversation(String conversationId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(conversationId, "conversationId");
         Conversation conv = findConversation(conversationId);
         conv.setIsActive(false);
         conv.setClosedAt(LocalDateTime.now());

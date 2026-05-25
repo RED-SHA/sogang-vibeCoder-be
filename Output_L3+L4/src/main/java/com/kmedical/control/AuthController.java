@@ -8,55 +8,58 @@ import com.kmedical.domain.enums.OAuthProviderType;
 import com.kmedical.domain.enums.SystemState;
 import com.kmedical.dto.auth.OAuthLoginRequestDTO;
 import com.kmedical.dto.auth.OAuthLoginResponseDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.MaskingUtil;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * SRV-C01 — AuthController
- * 책임: OAuth 검증, 세션 발급, 매직링크 로그인, Operator StartUp/CloseDown.
- * «state dependent control»: currentState 인스턴스 변수로 시스템 상태 유지.
+ * 책임: OAuth 검증, 세션 발급, Operator StartUp/CloseDown.
+ * «state dependent control»
  * UC: UC-X01, UC-P02, UC-S01
+ *
+ * NFR 적용: AuditLogger(LOGIN/LOGOUT/STARTUP/CLOSEDOWN), MaskingUtil(email/subjectId)
+ * Thread-safe: ConcurrentHashMap 사용
  */
 public class AuthController {
 
     private SystemState currentState;
     private final OAuthAdapter oAuthAdapter;
-    private final Map<String, User> userStore;
-    private final Map<String, String> sessionStore;
+    private final Map<String, User>   userStore    = new ConcurrentHashMap<>();
+    private final Map<String, String> sessionStore = new ConcurrentHashMap<>();
 
     public AuthController(OAuthAdapter oAuthAdapter) {
         this.oAuthAdapter = oAuthAdapter;
         this.currentState = SystemState.RUNNING;
-        this.userStore = new HashMap<>();
-        this.sessionStore = new HashMap<>();
         SystemStateRegistry.getInstance().setState(SystemState.RUNNING);
     }
 
     // ── Operator UC ───────────────────────────────────────────────────────────
 
-    /** Operator StartUp: 시스템을 RUNNING 상태로 전환한다. */
     public void startUp(String operatorId) {
         currentState = SystemState.RUNNING;
         SystemStateRegistry.getInstance().setState(SystemState.RUNNING);
+        AuditLogger.log("SYSTEM_STARTUP", operatorId, "SYSTEM", true, "System transitioned to RUNNING.");
     }
 
-    /** Operator CloseDown: 시스템을 CLOSED_DOWN 상태로 전환한다. */
     public void closeDown(String operatorId) {
         currentState = SystemState.CLOSED_DOWN;
         SystemStateRegistry.getInstance().setState(SystemState.CLOSED_DOWN);
+        AuditLogger.log("SYSTEM_CLOSEDOWN", operatorId, "SYSTEM", true, "System transitioned to CLOSED_DOWN.");
     }
 
-    public SystemState getCurrentState() {
-        return currentState;
-    }
+    public SystemState getCurrentState() { return currentState; }
 
     // ── Guard ─────────────────────────────────────────────────────────────────
 
     private void guardNotClosedDown() {
         if (currentState == SystemState.CLOSED_DOWN) {
+            AuditLogger.closedDownAccess("AuthController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -65,33 +68,50 @@ public class AuthController {
 
     /**
      * OAuth 인가 코드를 검증하고 세션 토큰을 발급한다.
-     * System Response: OAuth 검증 → User 조회 또는 생성 → 세션 토큰 발급
+     * NFR-SEC: authorizationCode 로그 노출 금지, email/subjectId 마스킹
+     * NFR-LOG: AUTH_LOGIN 감사 로그
      */
     public OAuthLoginResponseDTO loginWithOAuth(OAuthLoginRequestDTO request) {
         guardNotClosedDown();
 
-        if (request == null || request.getProvider() == null || request.getAuthorizationCode() == null) {
-            throw new IllegalArgumentException("OAuth login request is incomplete.");
+        // 1차 입력 검증 (NFR-DD)
+        ValidationUtil.requireNotNull(request, "OAuthLoginRequestDTO");
+        ValidationUtil.requireNotNull(request.getProvider(), "provider");
+        ValidationUtil.requireNotBlank(request.getAuthorizationCode(), "authorizationCode");
+        ValidationUtil.requireHttpsUrl(request.getRedirectUri(), "redirectUri");
+
+        String userId = null;
+        try {
+            String subjectId = oAuthAdapter.verifyAndGetSubjectId(
+                    request.getProvider(),
+                    request.getAuthorizationCode(),
+                    request.getRedirectUri()
+            );
+            String email = oAuthAdapter.fetchEmail(request.getProvider(), subjectId);
+
+            User user = findOrCreateUser(request.getProvider(), subjectId, email);
+            user.setLastLoginAt(LocalDateTime.now());
+            userId = user.getUserId();
+
+            String sessionToken = UUID.randomUUID().toString();
+            sessionStore.put(sessionToken, userId);
+
+            boolean isNewUser = user.getCreatedAt() != null &&
+                    user.getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(5));
+
+            AuditLogger.log("AUTH_LOGIN",
+                    userId,
+                    MaskingUtil.maskEmail(email),
+                    true,
+                    "provider=" + request.getProvider().name() + " subjectId=" + MaskingUtil.maskSubjectId(subjectId));
+
+            return new OAuthLoginResponseDTO(sessionToken, userId, resolveUserType(user), isNewUser);
+
+        } catch (Exception e) {
+            AuditLogger.log("AUTH_LOGIN", userId, "UNKNOWN", false, e.getMessage());
+            if (e instanceof IllegalArgumentException || e instanceof IllegalStateException) throw e;
+            throw new IllegalStateException("OAuth login failed: " + e.getMessage());
         }
-
-        String subjectId = oAuthAdapter.verifyAndGetSubjectId(
-                request.getProvider(),
-                request.getAuthorizationCode(),
-                request.getRedirectUri()
-        );
-        String email = oAuthAdapter.fetchEmail(request.getProvider(), subjectId);
-
-        User user = findOrCreateUser(request.getProvider(), subjectId, email);
-        user.setLastLoginAt(LocalDateTime.now());
-
-        String sessionToken = UUID.randomUUID().toString();
-        sessionStore.put(sessionToken, user.getUserId());
-
-        boolean isNewUser = (user.getCreatedAt() != null &&
-                user.getCreatedAt().isAfter(LocalDateTime.now().minusSeconds(5)));
-
-        String userType = resolveUserType(user);
-        return new OAuthLoginResponseDTO(sessionToken, user.getUserId(), userType, isNewUser);
     }
 
     /**
@@ -110,7 +130,9 @@ public class AuthController {
      */
     public void invalidateSession(String sessionToken) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(sessionToken, "sessionToken");
         sessionStore.remove(sessionToken);
+        AuditLogger.log("AUTH_LOGOUT", null, MaskingUtil.maskToken(sessionToken), true, "Session invalidated.");
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -132,7 +154,7 @@ public class AuthController {
     }
 
     private String resolveUserType(User user) {
-        if (user instanceof Admin) return "ADMIN";
+        if (user instanceof Admin)   return "ADMIN";
         if (user instanceof Patient) return "PATIENT";
         return "STAFF";
     }

@@ -8,10 +8,12 @@ import com.kmedical.domain.enums.AlertStatus;
 import com.kmedical.domain.enums.AlertType;
 import com.kmedical.dto.alert.AlertCreateRequestDTO;
 import com.kmedical.dto.alert.AlertDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,12 +22,13 @@ import java.util.UUID;
  * SRV-C13 — AlertController
  * 책임: 알림 생성 및 채널 발송 (Push/WhatsApp/Email).
  * UC: UC-N01, UC-E01, UC-E03
+ * NFR 적용: ConcurrentHashMap, AuditLogger(ALERT_SENT/ALERT_FAILED)
  */
 public class AlertController {
 
     private final PushAdapter pushAdapter;
     private final MessengerAdapter messengerAdapter;
-    private final Map<String, Alert> alertStore = new HashMap<>();
+    private final Map<String, Alert> alertStore = new ConcurrentHashMap<>();
 
     public AlertController(PushAdapter pushAdapter, MessengerAdapter messengerAdapter) {
         this.pushAdapter = pushAdapter;
@@ -34,6 +37,7 @@ public class AlertController {
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("AlertController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -44,9 +48,10 @@ public class AlertController {
      */
     public AlertDTO sendAlert(AlertCreateRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getRecipientUserId() == null) {
-            throw new IllegalArgumentException("Alert request is incomplete.");
-        }
+        ValidationUtil.requireNotNull(request, "AlertCreateRequestDTO");
+        ValidationUtil.requireNotBlank(request.getRecipientUserId(), "recipientUserId");
+        ValidationUtil.requireNotNull(request.getAlertType(), "alertType");
+        ValidationUtil.requireNotNull(request.getChannel(), "channel");
 
         Alert alert = new Alert();
         alert.setAlertId(UUID.randomUUID().toString());
@@ -61,6 +66,11 @@ public class AlertController {
         alert.setSentAt(LocalDateTime.now());
 
         alertStore.put(alert.getAlertId(), alert);
+
+        String action = success ? "ALERT_SENT" : "ALERT_FAILED";
+        AuditLogger.log(action, "SYSTEM", request.getRecipientUserId(), success,
+                "type=" + request.getAlertType() + " channel=" + request.getChannel());
+
         return toDTO(alert);
     }
 
@@ -93,6 +103,7 @@ public class AlertController {
      */
     public List<AlertDTO> getAlertsForUser(String recipientUserId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(recipientUserId, "recipientUserId");
         List<AlertDTO> result = new ArrayList<>();
         for (Alert a : alertStore.values()) {
             if (a.getRecipientUserId().equals(recipientUserId)) result.add(toDTO(a));

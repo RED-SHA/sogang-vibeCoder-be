@@ -5,10 +5,13 @@ import com.kmedical.domain.entity.WorkProofPhoto;
 import com.kmedical.domain.entity.WorkStatusUpdate;
 import com.kmedical.dto.staff.WorkProofPhotoDTO;
 import com.kmedical.dto.staff.WorkStatusUpdateDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,37 +20,38 @@ import java.util.UUID;
  * SRV-C11 — WorkController
  * 책임: 상태 변경 기록, 사진 업로드, 타임라인 동기화.
  * UC: UC-S05, UC-S06, UC-E03
+ * NFR 적용: ConcurrentHashMap/CopyOnWriteArrayList, takenAt 과거 검증, fileUrl HTTPS 검증
  */
 public class WorkController {
 
-    private final PushAdapter pushAdapter;
+    private final PushAdapter     pushAdapter;
     private final AlertController alertController;
-    private final Map<String, WorkStatusUpdate> statusUpdateStore = new HashMap<>();
-    /** assignmentId → 증빙 사진 목록 */
-    private final Map<String, List<WorkProofPhoto>> photoStore = new HashMap<>();
-    /** patientJourneyId → assignmentId 목록 (Invoice ISSUED 시 보관 갱신을 위한 역방향 인덱스) */
-    private final Map<String, List<String>> journeyAssignmentIndex = new HashMap<>();
+    private final Map<String, WorkStatusUpdate>    statusUpdateStore     = new ConcurrentHashMap<>();
+    private final Map<String, List<WorkProofPhoto>> photoStore           = new ConcurrentHashMap<>();
+    private final Map<String, List<String>>         journeyAssignmentIndex = new ConcurrentHashMap<>();
 
     public WorkController(PushAdapter pushAdapter, AlertController alertController) {
-        this.pushAdapter = pushAdapter;
+        this.pushAdapter     = pushAdapter;
         this.alertController = alertController;
     }
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("WorkController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
 
     /**
      * 실무자의 업무 상태를 변경하고 기록한다.
-     * System Response: WorkStatusUpdate 저장 → AlertController 동기화 알림 위임 (UC-E03)
+     * 검증: assignmentId, staffId, newStatus not null
      */
     public WorkStatusUpdateDTO updateWorkStatus(WorkStatusUpdateDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getAssignmentId() == null || request.getStaffId() == null) {
-            throw new IllegalArgumentException("WorkStatusUpdate request is incomplete.");
-        }
+        ValidationUtil.requireNotNull(request, "WorkStatusUpdateDTO");
+        ValidationUtil.requireNotBlank(request.getAssignmentId(), "assignmentId");
+        ValidationUtil.requireNotBlank(request.getStaffId(), "staffId");
+        ValidationUtil.requireNotNull(request.getNewStatus(), "newStatus");
 
         WorkStatusUpdate update = new WorkStatusUpdate();
         update.setWorkStatusUpdateId(UUID.randomUUID().toString());
@@ -58,7 +62,6 @@ public class WorkController {
         update.setSyncedAt(LocalDateTime.now());
 
         statusUpdateStore.put(update.getWorkStatusUpdateId(), update);
-
         alertController.notifyWorkStatusChange(request.getStaffId(), request.getNewStatus().name());
 
         WorkStatusUpdateDTO result = new WorkStatusUpdateDTO();
@@ -71,29 +74,36 @@ public class WorkController {
 
     /**
      * 현장 증빙 사진을 업로드한다.
-     * System Response: 입력 검증 → WorkProofPhoto 저장 (retentionExpiresAt 초기값 설정)
+     * 검증: fileUrl HTTPS 필수, takenAt 과거 시각만 허용
+     * 자동 설정: retentionExpiresAt = uploadedAt + 1년
      */
     public WorkProofPhotoDTO uploadProofPhoto(WorkProofPhotoDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getAssignmentId() == null || request.getFileUrl() == null) {
-            throw new IllegalArgumentException("WorkProofPhoto upload request is incomplete.");
+        ValidationUtil.requireNotNull(request, "WorkProofPhotoDTO");
+        ValidationUtil.requireNotBlank(request.getAssignmentId(), "assignmentId");
+        ValidationUtil.requireNotBlank(request.getStaffId(), "staffId");
+        ValidationUtil.requireHttpsUrl(request.getFileUrl(), "fileUrl");
+
+        // takenAt: 미래 시각 금지
+        if (request.getTakenAt() != null) {
+            ValidationUtil.requirePastDateTime(request.getTakenAt(), "takenAt");
         }
 
+        LocalDateTime now = LocalDateTime.now();
         WorkProofPhoto photo = new WorkProofPhoto();
         photo.setWorkProofPhotoId(UUID.randomUUID().toString());
         photo.setAssignmentId(request.getAssignmentId());
         photo.setStaffId(request.getStaffId());
         photo.setFileUrl(request.getFileUrl());
-        photo.setTakenAt(request.getTakenAt() != null ? request.getTakenAt() : LocalDateTime.now());
-        photo.setUploadedAt(LocalDateTime.now());
-        photo.setRetentionExpiresAt(LocalDateTime.now().plusYears(1));
+        photo.setTakenAt(request.getTakenAt() != null ? request.getTakenAt() : now);
+        photo.setUploadedAt(now);
+        photo.setRetentionExpiresAt(now.plusYears(1));
 
-        photoStore.computeIfAbsent(request.getAssignmentId(), k -> new ArrayList<>()).add(photo);
+        photoStore.computeIfAbsent(request.getAssignmentId(), k -> new CopyOnWriteArrayList<>()).add(photo);
 
-        // 여정-배정 역방향 인덱스 등록 (Invoice ISSUED 시 보관 갱신 지원)
         if (request.getPatientJourneyId() != null) {
             journeyAssignmentIndex
-                    .computeIfAbsent(request.getPatientJourneyId(), k -> new ArrayList<>())
+                    .computeIfAbsent(request.getPatientJourneyId(), k -> new CopyOnWriteArrayList<>())
                     .add(request.getAssignmentId());
         }
 
@@ -107,7 +117,7 @@ public class WorkController {
     }
 
     /**
-     * Invoice ISSUED 이벤트 수신 시 해당 여정의 모든 WorkProofPhoto 보관 기간을 갱신한다.
+     * Invoice ISSUED 이벤트 수신 시 해당 여정의 모든 WorkProofPhoto 보관 기간 갱신.
      * retentionExpiresAt = Invoice.issuedAt + 1년 (제약#8)
      */
     public void extendRetentionOnInvoiceIssued(String patientJourneyId, LocalDateTime invoiceIssuedAt) {
@@ -124,9 +134,10 @@ public class WorkController {
      */
     public List<WorkStatusUpdateDTO> getStatusHistory(String assignmentId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(assignmentId, "assignmentId");
         List<WorkStatusUpdateDTO> result = new ArrayList<>();
         for (WorkStatusUpdate u : statusUpdateStore.values()) {
-            if (u.getAssignmentId().equals(assignmentId)) {
+            if (assignmentId.equals(u.getAssignmentId())) {
                 WorkStatusUpdateDTO dto = new WorkStatusUpdateDTO();
                 dto.setAssignmentId(u.getAssignmentId());
                 dto.setStaffId(u.getStaffId());

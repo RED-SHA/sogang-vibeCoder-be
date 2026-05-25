@@ -7,10 +7,13 @@ import com.kmedical.domain.enums.ScheduleItemStatus;
 import com.kmedical.dto.journey.PatientJourneyDTO;
 import com.kmedical.dto.journey.ScheduleItemDTO;
 import com.kmedical.dto.journey.ScheduleItemUpdateRequestDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,11 +23,12 @@ import java.util.UUID;
  * 책임: 여정 생성, 일정 관리, 상태 동기화, 좌표 제공.
  * UC: UC-A06, UC-P08, UC-P10, UC-P11, UC-S04, UC-S07
  * 제약: ScheduleItem 상태 전이 SCHEDULED→IN_PROGRESS→COMPLETED 순서만 허용
+ * NFR 적용: ConcurrentHashMap, CopyOnWriteArrayList, 좌표 범위 검증, scheduledEndAt > scheduledStartAt
  */
 public class JourneyController {
 
-    private final Map<String, PatientJourney> journeyStore = new HashMap<>();
-    private final Map<String, List<ScheduleItem>> scheduleStore = new HashMap<>();
+    private final Map<String, PatientJourney> journeyStore = new ConcurrentHashMap<>();
+    private final Map<String, List<ScheduleItem>> scheduleStore = new ConcurrentHashMap<>();
     private final AlertController alertController;
 
     public JourneyController(AlertController alertController) {
@@ -33,6 +37,7 @@ public class JourneyController {
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("JourneyController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -43,9 +48,8 @@ public class JourneyController {
      */
     public PatientJourneyDTO createJourney(PatientJourneyDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getPatientId() == null) {
-            throw new IllegalArgumentException("Journey data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(dto, "PatientJourneyDTO");
+        ValidationUtil.requireNotBlank(dto.getPatientId(), "patientId");
 
         PatientJourney journey = new PatientJourney();
         journey.setPatientJourneyId(UUID.randomUUID().toString());
@@ -60,7 +64,7 @@ public class JourneyController {
         journey.setUpdatedAt(LocalDateTime.now());
 
         journeyStore.put(journey.getPatientJourneyId(), journey);
-        scheduleStore.put(journey.getPatientJourneyId(), new ArrayList<>());
+        scheduleStore.put(journey.getPatientJourneyId(), new CopyOnWriteArrayList<>());
         return toJourneyDTO(journey);
     }
 
@@ -69,6 +73,7 @@ public class JourneyController {
      */
     public PatientJourneyDTO getJourney(String journeyId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(journeyId, "journeyId");
         return toJourneyDTO(findJourney(journeyId));
     }
 
@@ -77,6 +82,7 @@ public class JourneyController {
      */
     public List<PatientJourneyDTO> getJourneysByPatient(String patientId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(patientId, "patientId");
         List<PatientJourneyDTO> result = new ArrayList<>();
         for (PatientJourney j : journeyStore.values()) {
             if (patientId.equals(j.getPatientId())) result.add(toJourneyDTO(j));
@@ -90,9 +96,8 @@ public class JourneyController {
      */
     public ScheduleItemDTO updateScheduleItem(ScheduleItemUpdateRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getScheduleItemId() == null) {
-            throw new IllegalArgumentException("ScheduleItem update data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(request, "ScheduleItemUpdateRequestDTO");
+        ValidationUtil.requireNotBlank(request.getScheduleItemId(), "scheduleItemId");
 
         ScheduleItem item = findScheduleItem(request.getScheduleItemId());
 
@@ -104,10 +109,21 @@ public class JourneyController {
         if (request.getScheduledStartAt() != null) item.setScheduledStartAt(request.getScheduledStartAt());
         if (request.getScheduledEndAt() != null) item.setScheduledEndAt(request.getScheduledEndAt());
         if (request.getLocationAddressEn() != null) item.setLocationAddressEn(request.getLocationAddressEn());
-        if (request.getLocationCoordLat() != null) item.setLocationCoordLat(request.getLocationCoordLat());
-        if (request.getLocationCoordLng() != null) item.setLocationCoordLng(request.getLocationCoordLng());
+        if (request.getLocationCoordLat() != null) {
+            ValidationUtil.requireLatitude(request.getLocationCoordLat());
+            item.setLocationCoordLat(request.getLocationCoordLat());
+        }
+        if (request.getLocationCoordLng() != null) {
+            ValidationUtil.requireLongitude(request.getLocationCoordLng());
+            item.setLocationCoordLng(request.getLocationCoordLng());
+        }
         if (request.getIsCritical() != null) item.setIsCritical(request.getIsCritical());
         if (request.getMemo() != null) item.setMemo(request.getMemo());
+
+        // scheduledEndAt > scheduledStartAt 보장
+        if (item.getScheduledStartAt() != null && item.getScheduledEndAt() != null) {
+            ValidationUtil.requireEndAfterStart(item.getScheduledStartAt(), item.getScheduledEndAt());
+        }
 
         // UC-E01 extend: 주요 일정 변경 시 AlertController 위임
         if (Boolean.TRUE.equals(item.getIsCritical())) {
@@ -123,11 +139,16 @@ public class JourneyController {
      */
     public ScheduleItemDTO addScheduleItem(ScheduleItemDTO dto) {
         guardNotClosedDown();
-        if (dto == null || dto.getPatientJourneyId() == null) {
-            throw new IllegalArgumentException("ScheduleItem data is incomplete.");
-        }
+        ValidationUtil.requireNotNull(dto, "ScheduleItemDTO");
+        ValidationUtil.requireNotBlank(dto.getPatientJourneyId(), "patientJourneyId");
 
         findJourney(dto.getPatientJourneyId());
+
+        if (dto.getLocationCoordLat() != null) ValidationUtil.requireLatitude(dto.getLocationCoordLat());
+        if (dto.getLocationCoordLng() != null) ValidationUtil.requireLongitude(dto.getLocationCoordLng());
+        if (dto.getScheduledStartAt() != null && dto.getScheduledEndAt() != null) {
+            ValidationUtil.requireEndAfterStart(dto.getScheduledStartAt(), dto.getScheduledEndAt());
+        }
 
         ScheduleItem item = new ScheduleItem();
         item.setScheduleItemId(UUID.randomUUID().toString());
@@ -144,7 +165,7 @@ public class JourneyController {
         item.setMemo(dto.getMemo());
         item.setSortOrder(dto.getSortOrder());
 
-        scheduleStore.get(dto.getPatientJourneyId()).add(item);
+        scheduleStore.computeIfAbsent(dto.getPatientJourneyId(), k -> new CopyOnWriteArrayList<>()).add(item);
         return toItemDTO(item);
     }
 
@@ -153,6 +174,7 @@ public class JourneyController {
      */
     public List<ScheduleItemDTO> getScheduleItems(String journeyId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(journeyId, "journeyId");
         findJourney(journeyId);
         List<ScheduleItemDTO> result = new ArrayList<>();
         for (ScheduleItem i : scheduleStore.getOrDefault(journeyId, new ArrayList<>())) {
@@ -166,6 +188,7 @@ public class JourneyController {
      */
     public List<PatientJourneyDTO> getActiveJourneysByAgency(String agencyId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(agencyId, "agencyId");
         List<PatientJourneyDTO> result = new ArrayList<>();
         for (PatientJourney j : journeyStore.values()) {
             if (agencyId.equals(j.getAgencyId())
@@ -182,6 +205,7 @@ public class JourneyController {
      */
     public ScheduleItemDTO getScheduleItemForNavigation(String scheduleItemId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(scheduleItemId, "scheduleItemId");
         return toItemDTO(findScheduleItem(scheduleItemId));
     }
 

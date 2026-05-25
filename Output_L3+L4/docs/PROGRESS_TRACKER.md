@@ -207,4 +207,58 @@
 - [x] App.java (전체 컨트롤러 Manual DI + HttpServer 셋업, 20개 컨텍스트 등록)
 
 ---
-## 완료 현황: L3+L4 코드 100% / HTTP Handler 레이어 100% / 컴파일 0 errors
+
+### 분석 보고서 작업 (L2 vs L3+L4 비교)
+- [x] L2 클래스 카운트 및 역할 분류 (24개 파일 분석 완료)
+- [x] L3+L4 클래스 분류 (명세 기반 161개 / AI 임의 23개 / Total 184개)
+- [x] ECB 분리 분석 (L2 혼재 → L3+L4 패키지 수준 명확 분리)
+- [x] 아키텍처(C/S) 분석 (L2 없음 → L3+L4 HttpServer 기반 C/S 분리)
+- [x] 상태 관리 분석 (L2 모호함 → L3+L4 enum State Machine + Guard 79회)
+- [x] 동시성 처리 분석 (L2 부분 / L3+L4 부분)
+- [x] 마크다운 문서 생성 → docs/L2_vs_L3L4_Analysis.md
+
+---
+
+### PART C. Specification Augmentation (추가 명세 작성)
+- [x] 코드베이스 스캔 (32개 Entity + 45개 DTO 필드 구조 파악)
+- [x] Data Dictionary 정의 (17개 클래스 × 속성별 타입·제약·정규식)
+- [x] NFR 정의 (보안·로깅·성능 3종)
+- [x] Markdown 문서 포맷팅 완결 → docs/C_Specification_Augmentation.md
+- [x] README.md 갱신 (C 문서 링크 추가)
+- [x] NEXT_AGENT_PROMPT.md 생성
+
+---
+
+### PART D. SA 기반 리팩토링 (Validation + NFR 코드 구현)
+
+#### D-1. 신규 유틸리티 클래스 (com.kmedical.util)
+- [x] ValidationUtil — 정규식·범위·필수값 검증 메서드 15종
+- [x] MaskingUtil — 이메일·토큰·URL 마스킹 메서드
+- [x] AuditLogger — [AUDIT]/[WARN]/[PERF] 표준 포맷 로그 출력
+
+#### D-2. Control 계층 리팩토링
+- [x] AuthController — ConcurrentHashMap, 입력 검증, AuditLogger(LOGIN/LOGOUT/STARTUP/CLOSEDOWN)
+- [x] PatientController — ConcurrentHashMap, E.164 전화 검증, fullNameEn 검증
+- [x] InvoiceController — ConcurrentHashMap, 금액 검증, AuditLogger(ISSUED/CANCELLED)
+- [x] AccessLinkController — ConcurrentHashMap, SecureRandom 토큰, 잠금 메시지 개선
+- [x] WorkController — ConcurrentHashMap, takenAt 과거 검증, fileUrl HTTPS 검증
+- [x] SOSController — ConcurrentHashMap, 좌표 범위 검증, PERF 로깅(500ms), AuditLogger
+- [x] PassportController — ConcurrentHashMap, HTTPS imageUrl 검증, AuditLogger(PASSPORT_REVIEW), PERF 로깅(3000ms)
+- [x] DashboardController — PERF 로깅(2000ms), 안전 폴백 반환
+- [x] AgencyController — ConcurrentHashMap, 라이선스번호 검증, 이메일 검증
+- [x] AlertController — ConcurrentHashMap
+- [x] ChatController — ConcurrentHashMap, 메시지 길이 검증, PERF 로깅(1000ms)
+- [x] GuideController — ConcurrentHashMap
+- [x] JourneyController — ConcurrentHashMap, 좌표 검증, 시간 순서 검증
+- [x] QuotationController — ConcurrentHashMap, OPEN 건수 검증, 날짜 검증
+- [x] RBACController — ConcurrentHashMap, AuditLogger(ROLE_ASSIGNED/REVOKED)
+- [x] ReportController — ConcurrentHashMap, 당일 날짜 검증, 자정 이전 검증
+- [x] StaffController — ConcurrentHashMap, HTTPS URL 검증
+- [x] StaffAssignmentController — ConcurrentHashMap
+- [x] TemplateController — ConcurrentHashMap
+
+#### D-3. guardNotClosedDown 로깅 통합
+- [x] 모든 Controller의 guardNotClosedDown()에 AuditLogger.closedDownAccess() 연결
+
+---
+## 완료 현황: L3+L4 코드 100% / HTTP Handler 레이어 100% / 컴파일 0 errors / 분석 보고서 생성 완료 / C 명세 문서 작성 완료 / D 리팩토링 100%

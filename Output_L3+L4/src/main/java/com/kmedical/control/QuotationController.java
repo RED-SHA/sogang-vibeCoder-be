@@ -8,11 +8,13 @@ import com.kmedical.dto.quotation.QuotationAcceptRequestDTO;
 import com.kmedical.dto.quotation.QuotationCreateRequestDTO;
 import com.kmedical.dto.quotation.QuotationDTO;
 import com.kmedical.dto.quotation.QuotationRequestDTO;
+import com.kmedical.util.AuditLogger;
+import com.kmedical.util.ValidationUtil;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,16 +27,18 @@ import java.util.UUID;
  *   - OPEN 상태 요청: 환자당 최대 3건
  *   - 하나 ACCEPTED 전이 시 동일 Patient의 나머지 OPEN RFQ → CLOSED
  *   - 동일 QuotationRequest에 ACCEPTED Quotation 1건만 허용
+ * NFR 적용: ConcurrentHashMap, desiredVisitDate 미래 날짜 검증, 금액 NonNegative 검증
  */
 public class QuotationController {
 
     private static final int MAX_OPEN_REQUESTS = 3;
 
-    private final Map<String, QuotationRequest> requestStore = new HashMap<>();
-    private final Map<String, Quotation> quotationStore = new HashMap<>();
+    private final Map<String, QuotationRequest> requestStore = new ConcurrentHashMap<>();
+    private final Map<String, Quotation> quotationStore = new ConcurrentHashMap<>();
 
     private void guardNotClosedDown() {
         if (SystemStateRegistry.getInstance().isClosedDown()) {
+            AuditLogger.closedDownAccess("QuotationController", "UNKNOWN");
             throw new IllegalStateException("System is closed down. Customer operations are not permitted.");
         }
     }
@@ -42,11 +46,14 @@ public class QuotationController {
     /**
      * 환자가 견적을 요청한다.
      * System Response: OPEN 건수 확인(최대 3) → QuotationRequest 생성 (expiresAt = now+7일)
+     * 검증: patientId 필수, desiredVisitDate 미래 날짜
      */
     public QuotationRequestDTO createQuotationRequest(QuotationCreateRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getPatientId() == null) {
-            throw new IllegalArgumentException("QuotationRequest data is incomplete.");
+        ValidationUtil.requireNotNull(request, "QuotationCreateRequestDTO");
+        ValidationUtil.requireNotBlank(request.getPatientId(), "patientId");
+        if (request.getDesiredVisitDate() != null) {
+            ValidationUtil.requireFutureDate(request.getDesiredVisitDate(), "desiredVisitDate");
         }
 
         long openCount = requestStore.values().stream()
@@ -76,6 +83,7 @@ public class QuotationController {
      */
     public QuotationRequestDTO getQuotationRequest(String quotationRequestId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(quotationRequestId, "quotationRequestId");
         QuotationRequest rfq = findRFQ(quotationRequestId);
         return toRFQDTO(rfq);
     }
@@ -83,11 +91,17 @@ public class QuotationController {
     /**
      * 관리자가 견적서를 발행한다.
      * System Response: RFQ 상태 확인 → Quotation 생성(DRAFT) → 발송(SENT)
+     * 검증: medicalFeeUSD/conciergeFeeUSD NonNegative
      */
     public QuotationDTO issueQuotation(QuotationCreateRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getQuotationRequestId() == null) {
-            throw new IllegalArgumentException("Quotation issue request is incomplete.");
+        ValidationUtil.requireNotNull(request, "QuotationCreateRequestDTO");
+        ValidationUtil.requireNotBlank(request.getQuotationRequestId(), "quotationRequestId");
+        if (request.getMedicalFeeUSD() != null) {
+            ValidationUtil.requireNonNegativeBigDecimal(request.getMedicalFeeUSD(), "medicalFeeUSD");
+        }
+        if (request.getConciergeFeeUSD() != null) {
+            ValidationUtil.requireNonNegativeBigDecimal(request.getConciergeFeeUSD(), "conciergeFeeUSD");
         }
 
         QuotationRequest rfq = findRFQ(request.getQuotationRequestId());
@@ -107,6 +121,9 @@ public class QuotationController {
         q.setSentAt(LocalDateTime.now());
 
         quotationStore.put(q.getQuotationId(), q);
+
+        AuditLogger.log("QUOTATION_ISSUED", "SYSTEM", rfq.getPatientId(), true,
+                "quotationId=" + q.getQuotationId() + " total=" + total);
         return toQuotationDTO(q);
     }
 
@@ -116,9 +133,8 @@ public class QuotationController {
      */
     public QuotationDTO acceptQuotation(QuotationAcceptRequestDTO request) {
         guardNotClosedDown();
-        if (request == null || request.getQuotationId() == null) {
-            throw new IllegalArgumentException("Accept request is incomplete.");
-        }
+        ValidationUtil.requireNotNull(request, "QuotationAcceptRequestDTO");
+        ValidationUtil.requireNotBlank(request.getQuotationId(), "quotationId");
 
         Quotation quotation = quotationStore.get(request.getQuotationId());
         if (quotation == null) throw new IllegalArgumentException("Quotation not found: " + request.getQuotationId());
@@ -138,9 +154,10 @@ public class QuotationController {
 
         QuotationRequest rfq = findRFQ(quotation.getQuotationRequestId());
         rfq.setStatus(QuotationRequestStatus.ACCEPTED);
-
         closeOtherOpenRequests(rfq.getPatientId(), rfq.getQuotationRequestId());
 
+        AuditLogger.log("QUOTATION_ACCEPTED", rfq.getPatientId(), request.getQuotationId(), true,
+                "rfqId=" + rfq.getQuotationRequestId());
         return toQuotationDTO(quotation);
     }
 
@@ -162,6 +179,7 @@ public class QuotationController {
      */
     public List<QuotationRequestDTO> getRequestsByPatient(String patientId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(patientId, "patientId");
         List<QuotationRequestDTO> result = new ArrayList<>();
         for (QuotationRequest rfq : requestStore.values()) {
             if (rfq.getPatientId().equals(patientId)) result.add(toRFQDTO(rfq));
@@ -186,6 +204,7 @@ public class QuotationController {
      */
     public List<QuotationDTO> getQuotationsForRequest(String quotationRequestId) {
         guardNotClosedDown();
+        ValidationUtil.requireNotBlank(quotationRequestId, "quotationRequestId");
         List<QuotationDTO> result = new ArrayList<>();
         for (Quotation q : quotationStore.values()) {
             if (q.getQuotationRequestId().equals(quotationRequestId)) {
