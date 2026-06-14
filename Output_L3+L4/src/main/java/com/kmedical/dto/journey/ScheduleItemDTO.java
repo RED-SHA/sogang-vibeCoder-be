@@ -5,6 +5,9 @@ import com.kmedical.domain.enums.ScheduleItemType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /** ScheduleItem 도메인 복사 DTO — Interface 계층 노출용 */
 public class ScheduleItemDTO {
@@ -22,6 +25,8 @@ public class ScheduleItemDTO {
     private Boolean isCritical;
     private String memo;
     private Integer sortOrder;
+    private Integer version;
+    private List<String> assignedStaffIds = new ArrayList<>();
 
     public ScheduleItemDTO() {}
 
@@ -63,4 +68,17 @@ public class ScheduleItemDTO {
 
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
+
+    public List<String> getAssignedStaffIds() {
+        return Collections.unmodifiableList(assignedStaffIds);
+    }
+
+    public void setAssignedStaffIds(List<String> assignedStaffIds) {
+        this.assignedStaffIds = assignedStaffIds == null
+                ? new ArrayList<>()
+                : new ArrayList<>(assignedStaffIds);
+    }
 }

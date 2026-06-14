@@ -43,6 +43,12 @@ public class App {
             }
         };
 
+        RealtimeSyncAdapter realtimeSyncAdapter = snapshot -> {
+            System.out.printf("[REALTIME] → scheduleItem=%s version=%s%n",
+                    snapshot.getScheduleItemId(), snapshot.getVersion());
+            return true;
+        };
+
         MessengerAdapter messengerAdapter = new MessengerAdapter() {
             public boolean sendWhatsApp(String phone, String msg) {
                 System.out.printf("[WHATSAPP] → %s%n", phone);
@@ -89,7 +95,7 @@ public class App {
 
         // C08 Journey  (C01 alertController is used internally; alertController built first)
         AlertController alertController = new AlertController(pushAdapter, messengerAdapter);
-        JourneyController journeyController = new JourneyController(alertController);
+        JourneyController journeyController = new JourneyController(alertController, pushAdapter, realtimeSyncAdapter);
 
         // C09 Staff
         StaffController staffController = new StaffController();
@@ -175,6 +181,7 @@ public class App {
         System.out.println("  POST /api/quotations/requests     견적 요청");
         System.out.println("  POST /api/quotations/issue        견적 발송");
         System.out.println("  POST /api/journeys                여정 생성");
+        System.out.println("  PUT  /api/journeys/{id}/schedule/{sid} 일정 수정");
         System.out.println("  POST /api/assignments             스태프 배정");
         System.out.println("  POST /api/work/status             업무 상태 변경");
         System.out.println("  POST /api/chat/conversations      채팅방 생성");

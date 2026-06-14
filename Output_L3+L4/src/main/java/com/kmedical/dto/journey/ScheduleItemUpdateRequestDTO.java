@@ -5,11 +5,18 @@ import com.kmedical.domain.enums.ScheduleItemType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /** Interface → JourneyController 간 일정 수정 요청 DTO */
 public class ScheduleItemUpdateRequestDTO {
 
     private String scheduleItemId;
+    private String patientJourneyId;
+    private String operatorId;
+    private Integer expectedVersion;
+    private Boolean cancelRequested;
     private ScheduleItemType itemType;
     private String title;
     private LocalDateTime scheduledStartAt;
@@ -20,11 +27,26 @@ public class ScheduleItemUpdateRequestDTO {
     private ScheduleItemStatus status;
     private Boolean isCritical;
     private String memo;
+    private Integer sortOrder;
+    private List<String> assignedStaffIds = new ArrayList<>();
+    private String patientMagicLinkEndpoint;
 
     public ScheduleItemUpdateRequestDTO() {}
 
     public String getScheduleItemId() { return scheduleItemId; }
     public void setScheduleItemId(String scheduleItemId) { this.scheduleItemId = scheduleItemId; }
+
+    public String getPatientJourneyId() { return patientJourneyId; }
+    public void setPatientJourneyId(String patientJourneyId) { this.patientJourneyId = patientJourneyId; }
+
+    public String getOperatorId() { return operatorId; }
+    public void setOperatorId(String operatorId) { this.operatorId = operatorId; }
+
+    public Integer getExpectedVersion() { return expectedVersion; }
+    public void setExpectedVersion(Integer expectedVersion) { this.expectedVersion = expectedVersion; }
+
+    public Boolean getCancelRequested() { return cancelRequested; }
+    public void setCancelRequested(Boolean cancelRequested) { this.cancelRequested = cancelRequested; }
 
     public ScheduleItemType getItemType() { return itemType; }
     public void setItemType(ScheduleItemType itemType) { this.itemType = itemType; }
@@ -55,4 +77,22 @@ public class ScheduleItemUpdateRequestDTO {
 
     public String getMemo() { return memo; }
     public void setMemo(String memo) { this.memo = memo; }
+
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+
+    public List<String> getAssignedStaffIds() {
+        return Collections.unmodifiableList(assignedStaffIds);
+    }
+
+    public void setAssignedStaffIds(List<String> assignedStaffIds) {
+        this.assignedStaffIds = assignedStaffIds == null
+                ? new ArrayList<>()
+                : new ArrayList<>(assignedStaffIds);
+    }
+
+    public String getPatientMagicLinkEndpoint() { return patientMagicLinkEndpoint; }
+    public void setPatientMagicLinkEndpoint(String patientMagicLinkEndpoint) {
+        this.patientMagicLinkEndpoint = patientMagicLinkEndpoint;
+    }
 }

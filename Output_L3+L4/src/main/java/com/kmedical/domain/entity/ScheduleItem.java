@@ -5,6 +5,9 @@ import com.kmedical.domain.enums.ScheduleItemType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * C15 — ScheduleItem «entity»
@@ -25,6 +28,8 @@ public class ScheduleItem {
     private Boolean isCritical;
     private String memo;
     private Integer sortOrder;
+    private int version;
+    private List<String> assignedStaffIds = new ArrayList<>();
 
     public ScheduleItem() {}
 
@@ -66,4 +71,17 @@ public class ScheduleItem {
 
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+
+    public int getVersion() { return version; }
+    public void setVersion(int version) { this.version = version; }
+
+    public List<String> getAssignedStaffIds() {
+        return Collections.unmodifiableList(assignedStaffIds);
+    }
+
+    public void setAssignedStaffIds(List<String> assignedStaffIds) {
+        this.assignedStaffIds = assignedStaffIds == null
+                ? new ArrayList<>()
+                : new ArrayList<>(assignedStaffIds);
+    }
 }
