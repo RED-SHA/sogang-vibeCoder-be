@@ -9,6 +9,7 @@ import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ public class StaffAssignmentController {
 
     private final PushAdapter pushAdapter;
     private final Map<String, StaffAssignment> assignmentStore = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> itineraryAssignmentStore = new ConcurrentHashMap<>();
 
     public StaffAssignmentController(PushAdapter pushAdapter) {
         this.pushAdapter = pushAdapter;
@@ -98,6 +100,22 @@ public class StaffAssignmentController {
             if (a.getScheduleItemId().equals(scheduleItemId)) result.add(toDTO(a));
         }
         return result;
+    }
+
+    public List<String> replaceAssignedStaffIds(String scheduleItemId, List<String> staffIds, String assignedBy) {
+        guardNotClosedDown();
+        ValidationUtil.requireNotBlank(scheduleItemId, "scheduleItemId");
+        List<String> safeStaffIds = staffIds == null ? Collections.emptyList() : new ArrayList<>(staffIds);
+        itineraryAssignmentStore.put(scheduleItemId, Collections.unmodifiableList(safeStaffIds));
+        AuditLogger.log("ITINERARY_STAFF_UPDATED", assignedBy, scheduleItemId, true,
+                "staffIds=" + safeStaffIds);
+        return new ArrayList<>(safeStaffIds);
+    }
+
+    public List<String> getAssignedStaffIds(String scheduleItemId) {
+        guardNotClosedDown();
+        ValidationUtil.requireNotBlank(scheduleItemId, "scheduleItemId");
+        return new ArrayList<>(itineraryAssignmentStore.getOrDefault(scheduleItemId, Collections.emptyList()));
     }
 
     /**

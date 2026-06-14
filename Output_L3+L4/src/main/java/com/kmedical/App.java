@@ -87,15 +87,15 @@ public class App {
         // C07 Template
         TemplateController templateController = new TemplateController();
 
-        // C08 Journey  (C01 alertController is used internally; alertController built first)
+        // C10 StaffAssignment
+        StaffAssignmentController staffAssignmentController = new StaffAssignmentController(pushAdapter);
+
+        // C08 Journey  (alert, staff assignment, and push outputs are used internally)
         AlertController alertController = new AlertController(pushAdapter, messengerAdapter);
-        JourneyController journeyController = new JourneyController(alertController);
+        JourneyController journeyController = new JourneyController(alertController, staffAssignmentController, pushAdapter);
 
         // C09 Staff
         StaffController staffController = new StaffController();
-
-        // C10 StaffAssignment
-        StaffAssignmentController staffAssignmentController = new StaffAssignmentController(pushAdapter);
 
         // C11 Work
         WorkController workController = new WorkController(pushAdapter, alertController);

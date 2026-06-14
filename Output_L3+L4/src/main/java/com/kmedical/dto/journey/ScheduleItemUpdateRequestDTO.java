@@ -20,6 +20,7 @@ public class ScheduleItemUpdateRequestDTO {
     private ScheduleItemStatus status;
     private Boolean isCritical;
     private String memo;
+    private Integer sortOrder;
 
     public ScheduleItemUpdateRequestDTO() {}
 
@@ -55,4 +56,7 @@ public class ScheduleItemUpdateRequestDTO {
 
     public String getMemo() { return memo; }
     public void setMemo(String memo) { this.memo = memo; }
+
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 }
