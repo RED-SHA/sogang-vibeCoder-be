@@ -25,6 +25,7 @@ public class ScheduleItem {
     private Boolean isCritical;
     private String memo;
     private Integer sortOrder;
+    private int version;
 
     public ScheduleItem() {}
 
@@ -66,4 +67,8 @@ public class ScheduleItem {
 
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+
+    public int getVersion() { return version; }
+    public void setVersion(int version) { this.version = version; }
+    public void incrementVersion() { this.version++; }
 }

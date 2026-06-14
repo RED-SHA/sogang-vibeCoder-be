@@ -9,9 +9,11 @@ import com.kmedical.util.ValidationUtil;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -97,6 +99,47 @@ public class StaffAssignmentController {
         for (StaffAssignment a : assignmentStore.values()) {
             if (a.getScheduleItemId().equals(scheduleItemId)) result.add(toDTO(a));
         }
+        return result;
+    }
+
+    /**
+     * UC-ADM-07 Step 9: replace assigned staff inside the itinerary edit flow.
+     * Push notification is intentionally left to Step 12 of UC-ADM-07.
+     */
+    public synchronized List<StaffAssignmentDTO> replaceAssignmentsForScheduleItem(
+            String scheduleItemId,
+            List<StaffAssignmentCreateRequestDTO> requests,
+            String operatorId) {
+        guardNotClosedDown();
+        ValidationUtil.requireNotBlank(scheduleItemId, "scheduleItemId");
+        if (requests == null) return getAssignmentsByScheduleItem(scheduleItemId);
+
+        Set<Object> roles = new HashSet<>();
+        for (StaffAssignmentCreateRequestDTO request : requests) {
+            ValidationUtil.requireNotNull(request, "StaffAssignmentCreateRequestDTO");
+            ValidationUtil.requireNotBlank(request.getStaffId(), "staffId");
+            ValidationUtil.requireNotNull(request.getStaffRole(), "staffRole");
+            if (!roles.add(request.getStaffRole())) {
+                throw new IllegalStateException("Duplicate staffRole in itinerary edit: " + request.getStaffRole());
+            }
+        }
+
+        assignmentStore.entrySet().removeIf(e -> scheduleItemId.equals(e.getValue().getScheduleItemId()));
+        List<StaffAssignmentDTO> result = new ArrayList<>();
+        for (StaffAssignmentCreateRequestDTO request : requests) {
+            StaffAssignment assignment = new StaffAssignment();
+            assignment.setAssignmentId(UUID.randomUUID().toString());
+            assignment.setScheduleItemId(scheduleItemId);
+            assignment.setStaffId(request.getStaffId());
+            assignment.setStaffRole(request.getStaffRole());
+            assignment.setAssignedBy(operatorId);
+            assignment.setAssignedAt(LocalDateTime.now());
+            assignmentStore.put(assignment.getAssignmentId(), assignment);
+            result.add(toDTO(assignment));
+        }
+
+        AuditLogger.log("ITINERARY_STAFF_REPLACED", operatorId, scheduleItemId, true,
+                "assignmentCount=" + result.size());
         return result;
     }
 

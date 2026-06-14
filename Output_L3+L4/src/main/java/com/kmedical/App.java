@@ -38,9 +38,16 @@ public class App {
                 System.out.printf("[PUSH] → %s | %s%n", uid, title);
                 return true;
             }
-            public void sendBulkPush(List<String> uids, String title, String body) {
+            public boolean sendBulkPush(List<String> uids, String title, String body) {
                 System.out.printf("[PUSH-BULK] → %d명 | %s%n", uids.size(), title);
+                return true;
             }
+        };
+
+        RealtimeSyncAdapter realtimeSyncAdapter = snapshot -> {
+            System.out.printf("[REALTIME] scheduleItem=%s version=%s%n",
+                    snapshot.getScheduleItemId(), snapshot.getVersion());
+            return true;
         };
 
         MessengerAdapter messengerAdapter = new MessengerAdapter() {
@@ -89,13 +96,15 @@ public class App {
 
         // C08 Journey  (C01 alertController is used internally; alertController built first)
         AlertController alertController = new AlertController(pushAdapter, messengerAdapter);
-        JourneyController journeyController = new JourneyController(alertController);
 
         // C09 Staff
         StaffController staffController = new StaffController();
 
         // C10 StaffAssignment
         StaffAssignmentController staffAssignmentController = new StaffAssignmentController(pushAdapter);
+
+        JourneyController journeyController = new JourneyController(
+                alertController, staffAssignmentController, realtimeSyncAdapter, pushAdapter);
 
         // C11 Work
         WorkController workController = new WorkController(pushAdapter, alertController);

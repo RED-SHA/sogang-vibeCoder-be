@@ -1,6 +1,8 @@
 package com.kmedical.ifo.admin;
 
 import com.kmedical.control.JourneyController;
+import com.kmedical.dto.journey.EditItineraryRequestDTO;
+import com.kmedical.dto.journey.EditItineraryResponseDTO;
 import com.kmedical.dto.journey.PatientJourneyDTO;
 import com.kmedical.dto.journey.ScheduleItemDTO;
 import com.kmedical.dto.journey.ScheduleItemUpdateRequestDTO;
@@ -50,5 +52,12 @@ public class ScheduleEditorView {
      */
     public ScheduleItemDTO updateScheduleItem(ScheduleItemUpdateRequestDTO request) {
         return journeyController.updateScheduleItem(request);
+    }
+
+    /**
+     * UC-ADM-07 L5: Admin edits an itinerary through the aggregate flow.
+     */
+    public EditItineraryResponseDTO editItinerary(EditItineraryRequestDTO request) {
+        return journeyController.editItinerary(request);
     }
 }

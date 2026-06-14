@@ -25,5 +25,5 @@ public interface PushAdapter {
      * @param title            알림 제목
      * @param body             알림 본문
      */
-    void sendBulkPush(java.util.List<String> recipientUserIds, String title, String body);
+    boolean sendBulkPush(java.util.List<String> recipientUserIds, String title, String body);
 }
